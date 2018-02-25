@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Function curve viewer example for widget mode (without web component)</title>
+ <link rel="stylesheet" type="text/css" href="app.css">
+ <script type="text/javascript" src="tempBuild/appBundle.js"></script>
+</head>
+
+<body>
+
+<h2>Function curve viewer example for widget mode (without web component)</h2>
+
+<canvas id="functionCurveViewer" tabindex="1">
+ Error: Your browser does not support the HTML canvas element.
+</canvas>
+
+<div class="buttons">
+ <span id="helpButton">help</span> &nbsp;
+</div>
+
+<div id="helpText" class="hidden">
+</div>
+
+<div class="loadTestBlock">
+ <div>Function expression:</div>
+ <div><input type="text" id="functionExpr" value="Math.sin(x) / x"></div>
+ <div><button id="loadFunctionExprButton">Load</button></div>
+</div>
+<div class="loadTestBlock">
+ <div>Local audio file:</div>
+ <div><input type="file" id="audioFile"></div>
+ <div><button id="loadLocalAudioFileButton">Load</button></div>
+</div>
+<div class="loadTestBlock">
+ <div>Audio file from URL:</div>
+ <div><input type="text" id="audioFileUrl" value="http://www.source-code.biz/testdata/audio/doorbell.mp3"></div>
+ <div><button id="loadAudioFileFromUrlButton">Load</button></div>
+</div>
+
+</body>
+</html>

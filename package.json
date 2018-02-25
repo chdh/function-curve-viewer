@@ -1,0 +1,27 @@
+{
+   "name": "function-curve-viewer",
+   "version": "1.0.0",
+   "description": "A function curve viewer widget / web component",
+   "types": "dist/Index.d.ts",
+   "module": "dist/Index.js",
+   "keywords": [
+      "function",
+      "curve",
+      "viewer"
+   ],
+   "license": "MIT",
+   "homepage": "http://www.source-code.biz/snippets/typescript/functionCurveViewer",
+   "repository": "github:chdh/function-curve-viewer",
+   "contributors": [
+      {
+         "name": "Christian d'Heureuse",
+         "email": "chdh@inventec.ch"
+      }
+   ],
+   "scripts": {
+      "build": "tsc"
+   },
+   "files": [
+      "dist/*"
+   ]
+}
