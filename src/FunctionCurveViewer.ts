@@ -42,10 +42,14 @@ class FunctionPlotter {
       ctx.fillRect(0, 0, width, height);
       ctx.restore(); }
 
-   private formatLabel (value: number, decPow: number) {
+   private formatLabel (value: number, decPow: number, xy: boolean) {
+      const wctx = this.wctx;
       let s = (decPow <= 7 && decPow >= -6) ? value.toFixed(Math.max(0, -decPow)) : value.toExponential();
       if (s.length > 10) {
          s = value.toPrecision(6); }
+      const unit = xy ? wctx.vState.xAxisUnit : wctx.vState.yAxisUnit;
+      if (unit) {
+         s += " " + unit; }
       return s; }
 
    private drawLabel (cPos: number, value: number, decPow: number, xy: boolean) {
@@ -57,7 +61,7 @@ class FunctionPlotter {
       ctx.fillStyle = "#707070";
       const x = xy ? cPos + 5 : 5;
       const y = xy ? wctx.canvas.height - 2 : cPos - 2;
-      const s = this.formatLabel(value, decPow);
+      const s = this.formatLabel(value, decPow, xy);
       ctx.fillText(s, x, y);
       ctx.restore(); }
 
@@ -549,7 +553,7 @@ class WidgetContext {
       const span = (f > 2.001) ? 5 : (f > 1.001) ? 2 : 1;                          // span factor for visible grid lines
       const p1 = Math.ceil(edge / space);
       const pos = span * Math.ceil(p1 / span);                                     // position of first grid line in grid space units
-      return {space: space, span: span, pos: pos, decPow: decPow}; }
+      return {space, span, pos, decPow}; }
 
    // Re-paints the canvas and updates the cursor.
    public refresh() {
@@ -563,11 +567,11 @@ class WidgetContext {
 //--- Viewer state -------------------------------------------------------------
 
 // The viewer function receives an X value and the sample width used to plot the function graph.
-// The sample width is currently the same as 1 / ViewerState.zoomFactorX.
 // It returns one of the following:
 //   - A single Y value.
 //   - An array containing the lowest and highest Y values within the range (x - sampleWidth/2) to (x + sampleWidth/2).
 //   - undefined, when the function value is undefined for this X value.
+// In the current implementation of the function curve viewer, the sample width is 1 / ViewerState.zoomFactorX.
 export type ViewerFunction = (x: number, sampleWidth: number) => (number | number[] | undefined);
 
 export const enum ZoomMode {x, y, xy};
@@ -579,6 +583,8 @@ export interface ViewerState {
    zoomFactorX:              number;                       // zoom factor for x coordinate values
    zoomFactorY:              number;                       // zoom factor for y coordinate values
    gridEnabled:              boolean;                      // true to draw a coordinate grid
+   xAxisUnit?:               string;                       // unit to be appended to x-axis labels
+   yAxisUnit?:               string;                       // unit to be appended to y-axis labels
    primaryZoomMode:          ZoomMode; }                   // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
 
 // Clones and adds missing fields.
@@ -588,6 +594,8 @@ function cloneViewerState (vState: ViewerState) : ViewerState {
    vState2.planeOrigin         = PointUtils.clone(get(vState.planeOrigin, {x: 0, y: 0}));
    vState2.zoomFactorX         = get(vState.zoomFactorX, 1);
    vState2.zoomFactorY         = get(vState.zoomFactorY, 1);
+   vState2.xAxisUnit           = vState.xAxisUnit;
+   vState2.yAxisUnit           = vState.yAxisUnit;
    vState2.gridEnabled         = get(vState.gridEnabled, true);
    vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy);
    return vState2;

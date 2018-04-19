@@ -7,6 +7,8 @@ const initialViewerState = <FunctionCurveViewer.ViewerState>{
    planeOrigin:    {x: -20, y: -1.2},
    zoomFactorX:    800 / 40,
    zoomFactorY:    500 / 2.4,
+   xAxisUnit:      "s",
+   yAxisUnit:      "m",
    gridEnabled:    true };
 
 function viewerFunction (x: number, _sampleWidth: number) {
