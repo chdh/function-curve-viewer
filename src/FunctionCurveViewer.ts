@@ -38,7 +38,7 @@ class FunctionPlotter {
       ctx.save();
       const width  = wctx.canvas.width;
       const height = wctx.canvas.height;
-      ctx.fillStyle = "#FFFFFF";
+      ctx.fillStyle = wctx.style.backgroundColor;
       ctx.fillRect(0, 0, width, height);
       ctx.restore(); }
 
@@ -58,7 +58,7 @@ class FunctionPlotter {
       ctx.save();
       ctx.textBaseline = "bottom";
       ctx.font = "12px";
-      ctx.fillStyle = "#707070";
+      ctx.fillStyle = wctx.style.labelTextColor;
       const x = xy ? cPos + 5 : 5;
       const y = xy ? wctx.canvas.height - 2 : cPos - 2;
       const s = this.formatLabel(value, decPow, xy);
@@ -67,16 +67,17 @@ class FunctionPlotter {
 
    private drawGridLine (p: number, cPos: number, xy: boolean) {
       const wctx = this.wctx;
+      const style = wctx.style;
       const ctx = this.ctx;
       ctx.save();
-      ctx.fillStyle = (p == 0) ? "#989898" : (p % 10 == 0) ? "#D4D4D4" : "#EEEEEE";
+      ctx.fillStyle = (p == 0) ? style.gridColor0 : (p % 10 == 0) ? style.gridColor10 : style.gridColor;
       ctx.fillRect(xy ? cPos : 0, xy ? 0 : cPos, xy ? 1 : wctx.canvas.width, xy ? wctx.canvas.height : 1);
       ctx.restore(); }
 
    private drawXYGrid (xy: boolean) {
       const wctx = this.wctx;
       const gp = wctx.getGridParms(xy);
-      if (gp == null) {
+      if (!gp) {
          return; }
       let p = gp.pos;
       let loopCtr = 0;
@@ -107,7 +108,7 @@ class FunctionPlotter {
       const sampleWidth = 1 / wctx.vState.zoomFactorX;
       const pixelCompensation = 0.41;
       ctx.save();
-      ctx.fillStyle = "#44CC44";
+      ctx.fillStyle = wctx.style.curveColor;
       ctx.strokeStyle = ctx.fillStyle;
       let prevCyLo: number|undefined = undefined;
       let prevCyHi: number|undefined = undefined;
@@ -437,6 +438,14 @@ class KeyboardController {
 interface InteractionState {
    planeDragging:            boolean; }                    // true if the coordinate plane is beeing dragged
 
+interface Style {
+   backgroundColor:          string;
+   labelTextColor:           string;
+   gridColor0:               string;
+   gridColor10:              string;
+   gridColor:                string;
+   curveColor:               string; }
+
 class WidgetContext {
 
    public plotter:           FunctionPlotter;
@@ -446,6 +455,7 @@ class WidgetContext {
 
    public canvas:            HTMLCanvasElement;            // the DOM canvas element
    public isConnected:       boolean;
+   public style:             Style;
 
    public vState:            ViewerState;                  // current viewer state
    public initialVState:     ViewerState;                  // last set initial viewer state
@@ -454,9 +464,21 @@ class WidgetContext {
    constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
       this.isConnected = false;
+      this.getStyle();
       this.setViewerState(<ViewerState>{});
       this.resetInteractionState();
       this.plotter = new FunctionPlotter(this); }
+
+   private getStyle() {
+      const cs = getComputedStyle(this.canvas);
+      const style = <Style>{};
+      style.backgroundColor = cs.getPropertyValue("--background-color") || "#FFFFFF";
+      style.labelTextColor  = cs.getPropertyValue("--label-text-color") || "#707070";
+      style.gridColor0      = cs.getPropertyValue("--grid-color-0")     || "#989898";
+      style.gridColor10     = cs.getPropertyValue("--grid-color-10")    || "#D4D4D4";
+      style.gridColor       = cs.getPropertyValue("--grid-color")       || "#EEEEEE";
+      style.curveColor      = cs.getPropertyValue("--curve-color")      || "#44CC44";
+      this.style = style; }
 
    public connect() {
       if (this.isConnected) {
@@ -540,14 +562,14 @@ class WidgetContext {
       this.vState.zoomFactorY *= fy;
       this.adjustPlaneOrigin(cCenter, lCenter); }
 
-   public getGridParms (xy: boolean) : {space: number, span: number, pos: number, decPow: number} | null {
+   public getGridParms (xy: boolean) : {space: number, span: number, pos: number, decPow: number} | undefined {
       const minSpaceC = xy ? 66 : 50;                                              // minimum space between grid lines in pixel
       const edge = xy ? this.vState.planeOrigin.x : this.vState.planeOrigin.y;     // canvas edge coordinate
       const minSpaceL = minSpaceC / this.getZoomFactor(xy);                        // minimum space between grid lines in logical coordinate units
       const decPow = Math.ceil(Math.log(minSpaceL / 5) / Math.LN10);               // decimal power of grid line space
       const edgeDecPow = (edge == 0) ? -99 : Math.log(Math.abs(edge)) / Math.LN10; // decimal power of canvas coordinates
       if (edgeDecPow - decPow > 10) {
-         return null; }                                                            // numerically instable
+         return; }                                                                 // numerically instable
       const space = Math.pow(10, decPow);                                          // grid line space (distance) in logical units
       const f = minSpaceL / space;                                                 // minimum for span factor
       const span = (f > 2.001) ? 5 : (f > 1.001) ? 2 : 1;                          // span factor for visible grid lines

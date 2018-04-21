@@ -10,7 +10,8 @@ function-curve-viewer {
    height: 500px;
    border: 1px solid black;
    margin-top: 5px;
-   margin-bottom: 20px; }
+   margin-bottom: 20px;
+   --curve-color: blue; }
 
 div.buttons {
    color: #07C;

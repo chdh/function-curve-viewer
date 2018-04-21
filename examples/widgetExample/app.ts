@@ -80,7 +80,7 @@ function loadFileData (file: File) : Promise<ArrayBuffer> {
    function executor (resolve: Function, reject: Function) {
       let fileReader = new FileReader();
       fileReader.addEventListener("loadend", () => resolve(fileReader.result));
-      fileReader.addEventListener("error", (e) => reject(e.error));
+      fileReader.addEventListener("error", () => reject(fileReader.error));
       fileReader.readAsArrayBuffer(file); }}
 
 async function loadLocalAudioFile() {
