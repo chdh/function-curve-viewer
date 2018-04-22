@@ -74,7 +74,7 @@ class FunctionPlotter {
       ctx.fillRect(xy ? cPos : 0, xy ? 0 : cPos, xy ? 1 : wctx.canvas.width, xy ? wctx.canvas.height : 1);
       ctx.restore(); }
 
-   private drawXYGrid (xy: boolean) {
+   private drawGridOrLabels (labels: boolean, xy: boolean) {
       const wctx = this.wctx;
       const gp = wctx.getGridParms(xy);
       if (!gp) {
@@ -86,15 +86,19 @@ class FunctionPlotter {
          const cPos = xy ? wctx.mapLogicalToCanvasXCoordinate(lPos) : wctx.mapLogicalToCanvasYCoordinate(lPos);
          if (xy ? (cPos > wctx.canvas.width) : (cPos < 0)) {
             break; }
-         this.drawGridLine(p, cPos, xy);
-         this.drawLabel(cPos, lPos, gp.decPow, xy);
+         if (labels) {
+            this.drawLabel(cPos, lPos, gp.decPow, xy); }
+          else {
+            this.drawGridLine(p, cPos, xy); }
          p += gp.span;
          if (loopCtr++ > 100) {                            // to prevent endless loop on numerical instability
             break; }}}
 
    private drawGrid() {
-      this.drawXYGrid(true);
-      this.drawXYGrid(false); }
+      this.drawGridOrLabels(false, false);
+      this.drawGridOrLabels(false, true);
+      this.drawGridOrLabels(true, false);
+      this.drawGridOrLabels(true, true); }
 
    private drawFunctionCurve() {
       // Curve drawing can switch from line mode to fill mode.
