@@ -25,42 +25,10 @@ function loadFunctionExprButtonClick() {
       console.log(e);
       alert(e); }}
 
-function interpolateLinear (samples: Float32Array, pos: number) : number | undefined {
-   const p1 = Math.floor(pos);
-   const p2 = Math.ceil(pos);
-   if (p1 < 0 || p2 > samples.length) {
-      return undefined; }
-   if (p1 == p2) {
-      return samples[p1]; }
-   const v1 = samples[p1];
-   const v2 = samples[p2];
-   return v1 + (pos - p1) * (v2 - v1); }
-
-// Returns the minimum and maximum sample values within the range from pos1 (inclusive) to pos2 (exclusive).
-function findValueRange (samples: Float32Array, pos1: number, pos2: number) : number[] | undefined {
-   const p1 = Math.max(0, Math.ceil(pos1));
-   const p2 = Math.min(samples.length + 1, Math.ceil(pos2));
-   if (p1 > p2) {
-      return undefined; }
-   let vMin = samples[p1];
-   let vMax = vMin;
-   for (let p = p1 + 1; p < p2; p++) {
-      const v = samples[p];
-      vMin = Math.min(v, vMin);
-      vMax = Math.max(v, vMax); }
-   return [vMin, vMax]; }
-
 function createViewerFunctionForAudioBuffer (audioBuffer: AudioBuffer) {
    const samples = audioBuffer.getChannelData(0);          // only the first channel is used
    const sampleRate = audioBuffer.sampleRate;
-   return viewerFunction;
-   function viewerFunction (x: number, sampleWidth: number) : number | number[] | undefined {
-      const pos = x * sampleRate;
-      const width = sampleWidth * sampleRate;
-      if (width < 1) {
-         return interpolateLinear(samples, pos); }
-       else {
-         return findValueRange(samples, pos - width / 2, pos + width / 2); }}}
+   return FunctionCurveViewer.createViewerFunctionForFloat32Array(samples, sampleRate); }
 
 async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
    const audioBuffer = await audioContext.decodeAudioData(fileData);
