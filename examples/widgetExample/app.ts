@@ -25,16 +25,13 @@ function loadFunctionExprButtonClick() {
       console.log(e);
       alert(e); }}
 
-function createViewerFunctionForAudioBuffer (audioBuffer: AudioBuffer) {
-   const samples = audioBuffer.getChannelData(0);          // only the first channel is used
-   const sampleRate = audioBuffer.sampleRate;
-   return FunctionCurveViewer.createViewerFunctionForFloat32Array(samples, sampleRate); }
-
 async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
    const audioBuffer = await audioContext.decodeAudioData(fileData);
+   const samples = new Float64Array(audioBuffer.getChannelData(0)); // only the first channel is used
+   const viewerFunction = FunctionCurveViewer.createViewerFunctionForFloat64Array(samples, audioBuffer.sampleRate);
    const yRange = 1.2;
    const viewerState = <FunctionCurveViewer.ViewerState>{
-      viewerFunction:  createViewerFunctionForAudioBuffer(audioBuffer),
+      viewerFunction:  viewerFunction,
       planeOrigin:     {x: 0, y: -yRange},
       zoomFactorX:     canvas.width / audioBuffer.duration,
       zoomFactorY:     canvas.height / (2 * yRange),
