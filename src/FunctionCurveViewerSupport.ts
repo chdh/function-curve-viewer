@@ -6,7 +6,7 @@ import {ViewerFunction} from "./FunctionCurveViewer";
 // When zoomed in, linear interpolation is used.
 // When zommed out, min/max values of the corresponding x value range are used to display the envelope of the curve.
 // The parameter scalingFactor is usually the sample rate.
-export function createViewerFunctionForFloat32Array (samples: Float32Array, scalingFactor: number) : ViewerFunction {
+export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number) : ViewerFunction {
    return function (x: number, sampleWidth: number) : number | number[] | undefined {
       const pos = x * scalingFactor;
       const width = sampleWidth * scalingFactor;
@@ -15,7 +15,7 @@ export function createViewerFunctionForFloat32Array (samples: Float32Array, scal
        else {
          return findValueRange(samples, pos - width / 2, pos + width / 2); }}}
 
-function interpolateLinear (samples: Float32Array, pos: number) : number | undefined {
+function interpolateLinear (samples: Float64Array, pos: number) : number | undefined {
    const p1 = Math.floor(pos);
    const p2 = Math.ceil(pos);
    if (p1 < 0 || p2 > samples.length) {
@@ -27,7 +27,7 @@ function interpolateLinear (samples: Float32Array, pos: number) : number | undef
    return v1 + (pos - p1) * (v2 - v1); }
 
 // Returns the minimum and maximum sample values within the range from pos1 (inclusive) to pos2 (exclusive).
-function findValueRange (samples: Float32Array, pos1: number, pos2: number) : number[] | undefined {
+function findValueRange (samples: Float64Array, pos1: number, pos2: number) : number[] | undefined {
    const p1 = Math.max(0, Math.ceil(pos1));
    const p2 = Math.min(samples.length + 1, Math.ceil(pos2));
    if (p1 > p2) {
