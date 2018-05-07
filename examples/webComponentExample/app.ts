@@ -19,6 +19,7 @@ function toggleHelp() {
 function startup2() {
    FunctionCurveViewer.registerCustomElement();
    const element = <FunctionCurveViewer.FunctionCurveViewerElement>document.getElementById("viewer1");
+   element.addEventListener("viewportchange", () => console.log("Viewportchange event"));
    element.setViewerState(initialViewerState);
    document.getElementById("helpButton")!.addEventListener("click", toggleHelp); }
 

@@ -1,3 +1,5 @@
+import EventTargetPolyfill from "./EventTargetPolyfill";
+
 //--- Point and PointUtils -----------------------------------------------------
 
 export interface Point {
@@ -222,6 +224,7 @@ class PointerController {
       if (wctx.iState.planeDragging && this.dragStartPos) {
          wctx.adjustPlaneOrigin(cPoint, this.dragStartPos);
          wctx.refresh();
+         wctx.fireViewportChangeEvent();
          return true; }
       return false; }
 
@@ -299,6 +302,7 @@ class MouseController {
             fx = f; fy = f; }}
       wctx.zoom(fx, fy, cPoint);
       wctx.refresh();
+      wctx.fireViewportChangeEvent();
       event.preventDefault(); };
 
    private getCanvasCoordinatesFromEvent (event: MouseEvent) : Point {
@@ -396,7 +400,8 @@ class TouchController {
       if (this.zoomY) {
          wctx.vState.zoomFactorY = this.zoomStartFactorY * f; }
       wctx.adjustPlaneOrigin(newCCenter, this.zoomLCenter);
-      wctx.refresh(); }}
+      wctx.refresh();
+      wctx.fireViewportChangeEvent(); }}
 
 //--- Keyboard controller ------------------------------------------------------
 
@@ -425,10 +430,12 @@ class KeyboardController {
             const fy = (c == '+' || c == 'Y') ? Math.SQRT2 : (c == '-' || c == 'y') ? Math.SQRT1_2 : 1;
             wctx.zoom(fx, fy);
             wctx.refresh();
+            wctx.fireViewportChangeEvent();
             return true; }
          case "r": {
             wctx.reset();
             wctx.refresh();
+            wctx.fireViewportChangeEvent();
             return true; }
          case "g": {
             wctx.vState.gridEnabled = !wctx.vState.gridEnabled;
@@ -458,6 +465,7 @@ class WidgetContext {
    public kbController:      KeyboardController;
 
    public canvas:            HTMLCanvasElement;            // the DOM canvas element
+   public eventTarget:       EventTarget;
    public isConnected:       boolean;
    public style:             Style;
 
@@ -467,6 +475,7 @@ class WidgetContext {
 
    constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
+      this.eventTarget = new EventTargetPolyfill();
       this.isConnected = false;
       this.getStyle();
       this.setViewerState(<ViewerState>{});
@@ -588,7 +597,11 @@ class WidgetContext {
 
    private updateCanvasCursorStyle() {
       const style = this.iState.planeDragging ? "move" : "auto";
-      this.canvas.style.cursor = style; }}
+      this.canvas.style.cursor = style; }
+
+   public fireViewportChangeEvent() {
+      const event = new CustomEvent("viewportchange");
+      this.eventTarget.dispatchEvent(event); }}
 
 //--- Viewer state -------------------------------------------------------------
 
@@ -637,6 +650,11 @@ export class Widget {
    constructor (canvas: HTMLCanvasElement) {
       this.wctx = new WidgetContext(canvas); }
 
+   // Sets a new EventTarget for this widget.
+   // The web component calls this method to direct the events out of the shadow DOM.
+   public setEventTarget (eventTarget: EventTarget) {
+      this.wctx.eventTarget = eventTarget; }
+
    // Called after the widget has been inserted into the DOM.
    // Installs the internal event listeners for mouse, touch and keyboard.
    // Adjusts the resolution of the backing bitmap.
@@ -650,6 +668,17 @@ export class Widget {
    // Uninstalls the internal event listeners for mouse, touch and keyboard.
    public disconnectedCallback() {
       this.wctx.disconnect(); }
+
+   // Registers an event listener.
+   // Currently only the "viewport-change" event is supported.
+   // The "viewportchange" event is fired after the user has changed the viewport of the widget
+   // e.g. by zooming oder moving the plane.
+   public addEventListener (type: string, listener: EventListener) {
+      this.wctx.eventTarget.addEventListener(type, listener); }
+
+   // Deregisters an event listener.
+   public removeEventListener (type: string, listener: EventListener) {
+      this.wctx.eventTarget.removeEventListener(type, listener); }
 
    // Returns the current state of the function curve viewer.
    public getViewerState() : ViewerState {

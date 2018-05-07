@@ -34,6 +34,7 @@ function startup() {
    widget = new FunctionCurveViewer.Widget(canvas);
    widget.setViewerState(initialViewerState);
    widget.connectedCallback();
+   widget.addEventListener("viewportchange", () => console.log("Viewportchange event"));
    document.getElementById("helpButton")!.addEventListener("click", toggleHelp); }
 
 document.addEventListener("DOMContentLoaded", startup);

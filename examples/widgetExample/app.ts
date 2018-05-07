@@ -92,6 +92,7 @@ function toggleHelp (show?: boolean) {
 function startup2() {
    canvas = <HTMLCanvasElement>document.getElementById("functionCurveViewer");
    widget = new FunctionCurveViewer.Widget(canvas);
+   widget.addEventListener("viewportchange", () => console.log("Viewportchange event"));
    widget.connectedCallback();
    document.getElementById("helpButton")!.addEventListener("click", () => toggleHelp());
    document.getElementById("loadFunctionExprButton")!.addEventListener("click", loadFunctionExprButtonClick);

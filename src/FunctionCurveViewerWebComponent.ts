@@ -9,7 +9,8 @@ export class FunctionCurveViewerElement extends HTMLElement {
       this.attachShadow({mode: "open"});
       this.shadowRoot!.innerHTML = htmlTemplate;
       const canvas = <HTMLCanvasElement>this.shadowRoot!.querySelector("canvas");
-      this.widget = new Widget(canvas); }
+      this.widget = new Widget(canvas);
+      this.widget.setEventTarget(this); }
 
    // Called by the browser when the element is inserted into the DOM.
    connectedCallback() {

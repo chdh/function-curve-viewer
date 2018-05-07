@@ -2,7 +2,7 @@
    "compilerOptions": {
       "alwaysStrict": true,
       "declaration": true,
-      "lib": ["ES6", "DOM"],
+      "lib": ["ES7", "DOM"],
       "module": "ES6",
       "moduleResolution": "node",
       "noFallthroughCasesInSwitch": true,
