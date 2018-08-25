@@ -15,6 +15,7 @@
       "paths": {
          "function-curve-viewer": ["../dist/FunctionCurveViewer.d.ts"]
       },
+      "sourceMap": true,
       "strictFunctionTypes": true,
       "strictNullChecks": true,
       "target": "ES6"

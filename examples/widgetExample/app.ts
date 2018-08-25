@@ -43,18 +43,18 @@ async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
 function loadFileData (file: File) : Promise<ArrayBuffer> {
    return new Promise<ArrayBuffer>(executor);
    function executor (resolve: Function, reject: Function) {
-      let fileReader = new FileReader();
+      const fileReader = new FileReader();
       fileReader.addEventListener("loadend", () => resolve(fileReader.result));
       fileReader.addEventListener("error", () => reject(fileReader.error));
       fileReader.readAsArrayBuffer(file); }}
 
 async function loadLocalAudioFile() {
-   let files = (<HTMLInputElement>document.getElementById("audioFile"))!.files;
+   const files = (<HTMLInputElement>document.getElementById("audioFile"))!.files;
    if (!files || files.length != 1) {
       throw new Error("No file selected."); }
    const file = files[0];
-   const fileData = await loadFileData(file)
-   initFunctionViewerFromAudioFileData(fileData); }
+   const fileData = await loadFileData(file);
+   await initFunctionViewerFromAudioFileData(fileData); }
 
 async function loadLocalAudioFileButtonClick() {
    try {
@@ -64,15 +64,15 @@ async function loadLocalAudioFileButtonClick() {
       alert(e); }}
 
 async function loadFileByUrl (url: string) : Promise<ArrayBuffer> {
-   let response = await fetch(url, {mode: "cors"});   // (server must send "Access-Control-Allow-Origin" header field or have same origin)
+   const response = await fetch(url, {mode: "cors"});   // (server must send "Access-Control-Allow-Origin" header field or have same origin)
    if (!response.ok) {
       throw new Error("Request failed for " + url); }
    return await response.arrayBuffer(); }
 
 async function loadAudioFileFromUrl() {
    const audioFileUrl = (<HTMLInputElement>document.getElementById("audioFileUrl"))!.value;
-   let fileData = await loadFileByUrl(audioFileUrl);
-   initFunctionViewerFromAudioFileData(fileData); }
+   const fileData = await loadFileByUrl(audioFileUrl);
+   await initFunctionViewerFromAudioFileData(fileData); }
 
 async function loadAudioFileFromUrlButtonClick() {
    try {

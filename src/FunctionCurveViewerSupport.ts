@@ -6,14 +6,14 @@ import {ViewerFunction} from "./FunctionCurveViewer";
 // When zoomed in, linear interpolation is used.
 // When zommed out, min/max values of the corresponding x value range are used to display the envelope of the curve.
 // The parameter scalingFactor is usually the sample rate.
-export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number) : ViewerFunction {
+export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number, offset = 0) : ViewerFunction {
    return function (x: number, sampleWidth: number) : number | number[] | undefined {
-      const pos = x * scalingFactor;
+      const pos = x * scalingFactor + offset;
       const width = sampleWidth * scalingFactor;
       if (width < 1) {
          return interpolateLinear(samples, pos); }
        else {
-         return findValueRange(samples, pos - width / 2, pos + width / 2); }}}
+         return findValueRange(samples, pos - width / 2, pos + width / 2); }}; }
 
 function interpolateLinear (samples: Float64Array, pos: number) : number | undefined {
    const p1 = Math.floor(pos);

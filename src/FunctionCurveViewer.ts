@@ -105,10 +105,10 @@ class FunctionPlotter {
    private drawFunctionCurve() {
       // Curve drawing can switch from line mode to fill mode.
       // Line mode is preferred because it looks visually better thanks to antialiasing.
-      const enum Mode {skip=0, line, fill};
+      const enum Mode {skip=0, line, fill}
       const wctx = this.wctx;
       const ctx = this.ctx;
-      const f = wctx.vState.viewerFunction;
+      const viewerFunction = wctx.vState.viewerFunction;
       const canvasWidth = wctx.canvas.width;
       const canvasHeight = wctx.canvas.height;
       const sampleWidth = 1 / wctx.vState.zoomFactorX;
@@ -124,7 +124,7 @@ class FunctionPlotter {
       startMode();
       for (let cx = 0; cx < canvasWidth; cx++) {
          const lx = wctx.mapCanvasToLogicalXCoordinate(cx + 0.5);
-         const ly = f(lx, sampleWidth);
+         const ly = viewerFunction(lx, sampleWidth);
          let lyLo: number;
          let lyHi: number;
          if (ly == undefined) {
@@ -261,7 +261,7 @@ class MouseController {
 
    private mouseDownEventListener = (event: MouseEvent) => {
       const wctx = this.wctx;
-      if (event.which == 1) {
+      if (event.button == 0) {
          const cPoint = this.getCanvasCoordinatesFromEvent(event);
          this.pointerController.startDragging(cPoint);
          event.preventDefault();
@@ -342,7 +342,7 @@ class TouchController {
       const touches = event.touches;
       if (touches.length == 1) {
          const touch = touches[0];
-         let cPoint = this.getCanvasCoordinatesFromTouch(touch);
+         const cPoint = this.getCanvasCoordinatesFromTouch(touch);
          this.pointerController.startDragging(cPoint);
          event.preventDefault(); }
        else if (touches.length == 2) {                     // zoom gesture
@@ -418,16 +418,15 @@ class KeyboardController {
       wctx.canvas.removeEventListener("keypress", this.keyPressEventListener); }
 
    private keyPressEventListener = (event: KeyboardEvent) => {
-      if (this.processKeyPress(event.which)) {
+      if (this.processKeyPress(event.key)) {
          event.stopPropagation(); }};
 
-   private processKeyPress (keyCharCode: number) {
+   private processKeyPress (key: string) {
       const wctx = this.wctx;
-      const c = String.fromCharCode(keyCharCode);
-      switch (c) {
+      switch (key) {
          case "+": case "-": case "x": case "X": case "y": case "Y": {
-            const fx = (c == '+' || c == 'X') ? Math.SQRT2 : (c == '-' || c == 'x') ? Math.SQRT1_2 : 1;
-            const fy = (c == '+' || c == 'Y') ? Math.SQRT2 : (c == '-' || c == 'y') ? Math.SQRT1_2 : 1;
+            const fx = (key == '+' || key == 'X') ? Math.SQRT2 : (key == '-' || key == 'x') ? Math.SQRT1_2 : 1;
+            const fy = (key == '+' || key == 'Y') ? Math.SQRT2 : (key == '-' || key == 'y') ? Math.SQRT1_2 : 1;
             wctx.zoom(fx, fy);
             wctx.refresh();
             wctx.fireViewportChangeEvent();
@@ -575,7 +574,7 @@ class WidgetContext {
       this.vState.zoomFactorY *= fy;
       this.adjustPlaneOrigin(cCenter, lCenter); }
 
-   public getGridParms (xy: boolean) : {space: number, span: number, pos: number, decPow: number} | undefined {
+   public getGridParms (xy: boolean) : {space: number; span: number; pos: number; decPow: number} | undefined {
       const minSpaceC = xy ? 66 : 50;                                              // minimum space between grid lines in pixel
       const edge = xy ? this.vState.planeOrigin.x : this.vState.planeOrigin.y;     // canvas edge coordinate
       const minSpaceL = minSpaceC / this.getZoomFactor(xy);                        // minimum space between grid lines in logical coordinate units
@@ -613,7 +612,7 @@ class WidgetContext {
 // In the current implementation of the function curve viewer, the sample width is 1 / ViewerState.zoomFactorX.
 export type ViewerFunction = (x: number, sampleWidth: number) => (number | number[] | undefined);
 
-export const enum ZoomMode {x, y, xy};
+export const enum ZoomMode {x, y, xy}
 
 // Function curve viewer state.
 export interface ViewerState {
@@ -628,7 +627,7 @@ export interface ViewerState {
 
 // Clones and adds missing fields.
 function cloneViewerState (vState: ViewerState) : ViewerState {
-   let vState2 = <ViewerState>{};
+   const vState2 = <ViewerState>{};
    vState2.viewerFunction      = get(vState.viewerFunction, (x: number, _sampleWidth: number) => Math.sin(x));
    vState2.planeOrigin         = PointUtils.clone(get(vState.planeOrigin, {x: 0, y: 0}));
    vState2.zoomFactorX         = get(vState.zoomFactorX, 1);

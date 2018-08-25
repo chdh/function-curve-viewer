@@ -32,6 +32,6 @@ export default class EventTargetPolyfill {
       if (!a) {
          return true; }
       const a2 = a.slice();
-      for (let listener of a2) {
+      for (const listener of a2) {
          listener(event); }
       return true; }}

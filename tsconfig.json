@@ -13,6 +13,7 @@
       "noUnusedParameters": true,
       "outDir": "dist",
       "removeComments": true,
+      "sourceMap": true,
       "strictFunctionTypes": true,
       "strictNullChecks": true,
       "target": "ES6"

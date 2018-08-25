@@ -7,6 +7,6 @@
       "rollup-plugin-node-resolve": "^3.0.0"
    },
    "scripts": {
-      "build": "tsc && rollup -c"
+      "build": "tsc && rollup -c --silent"
    }
 }
