@@ -1,8 +1,8 @@
 import * as FunctionCurveViewer from "function-curve-viewer";
 
-const audioContext  = new AudioContext();
 let   canvas:       HTMLCanvasElement;
 let   widget:       FunctionCurveViewer.Widget;
+let   audioContext: AudioContext;
 
 function loadFunctionExpr() {
    const functionExpr = (<HTMLInputElement>document.getElementById("functionExpr"))!.value;
@@ -25,6 +25,8 @@ function loadFunctionExprButtonClick() {
       alert(e); }}
 
 async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
+   if (!audioContext) {
+      audioContext = new ((<any>window).AudioContext || (<any>window).webkitAudioContext)(); }
    const audioBuffer = await audioContext.decodeAudioData(fileData);
    const samples = new Float64Array(audioBuffer.getChannelData(0)); // only the first channel is used
    const viewerFunction = FunctionCurveViewer.createViewerFunctionForFloat64Array(samples, audioBuffer.sampleRate);
@@ -99,11 +101,16 @@ function startup2() {
    document.getElementById("loadAudioFileFromUrlButton")!.addEventListener("click", loadAudioFileFromUrlButtonClick);
    loadFunctionExprButtonClick(); }
 
+function showError (e: Error) {
+   console.log(e);
+   const divElement = document.createElement("div");
+   divElement.textContent = "Error: " + e;
+   document.body.insertAdjacentElement("afterbegin", divElement); }
+
 function startup() {
    try {
       startup2(); }
     catch (e) {
-      console.log(e);
-      alert("Error: " + e); }}
+      showError(e); }}
 
 document.addEventListener("DOMContentLoaded", startup);
