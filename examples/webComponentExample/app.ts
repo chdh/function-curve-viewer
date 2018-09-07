@@ -2,9 +2,10 @@ import * as FunctionCurveViewer from "function-curve-viewer";
 
 const initialViewerState = <FunctionCurveViewer.ViewerState>{
    viewerFunction: (x: number, _sampleWidth: number) => Math.sin(x) / x,
-   planeOrigin:    {x: -20, y: -1.2},
-   zoomFactorX:    800 / 40,
-   zoomFactorY:    500 / 2.4,
+   xMin:           -20,
+   xMax:           20,
+   yMin:           -1.2,
+   yMax:           1.2,
    gridEnabled:    true };
 
 function toggleHelp() {

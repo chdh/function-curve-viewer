@@ -7,13 +7,12 @@ let   widget:       FunctionCurveViewer.Widget;
 function loadFunctionExpr() {
    const functionExpr = (<HTMLInputElement>document.getElementById("functionExpr"))!.value;
    const viewerFunction = new Function("x", "return " + functionExpr);
-   const xRange = 20;
-   const yRange = 1.2;
    const viewerState = <FunctionCurveViewer.ViewerState>{
       viewerFunction: viewerFunction,
-      planeOrigin:    {x: -xRange, y: -yRange},
-      zoomFactorX:    canvas.width / (2 * xRange),
-      zoomFactorY:    canvas.height / (2 * yRange),
+      xMin:           -20,
+      xMax:           20,
+      yMin:           -1.2,
+      yMax:           1.2,
       gridEnabled:    true };
    widget.setViewerState(viewerState);
    toggleHelp(false); }
@@ -29,12 +28,12 @@ async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
    const audioBuffer = await audioContext.decodeAudioData(fileData);
    const samples = new Float64Array(audioBuffer.getChannelData(0)); // only the first channel is used
    const viewerFunction = FunctionCurveViewer.createViewerFunctionForFloat64Array(samples, audioBuffer.sampleRate);
-   const yRange = 1.2;
    const viewerState = <FunctionCurveViewer.ViewerState>{
       viewerFunction:  viewerFunction,
-      planeOrigin:     {x: 0, y: -yRange},
-      zoomFactorX:     canvas.width / audioBuffer.duration,
-      zoomFactorY:     canvas.height / (2 * yRange),
+      xMin:            0,
+      xMax:            audioBuffer.duration,
+      yMin:            -1.2,
+      yMax:            1.2,
       gridEnabled:     true,
       primaryZoomMode: FunctionCurveViewer.ZoomMode.x};
    widget.setViewerState(viewerState);

@@ -111,7 +111,7 @@ class FunctionPlotter {
       const viewerFunction = wctx.vState.viewerFunction;
       const canvasWidth = wctx.canvas.width;
       const canvasHeight = wctx.canvas.height;
-      const sampleWidth = 1 / wctx.vState.zoomFactorX;
+      const sampleWidth = (wctx.vState.xMax - wctx.vState.xMin) / wctx.canvas.width;
       const pixelCompensation = 0.41;
       ctx.save();
       ctx.fillStyle = wctx.style.curveColor;
@@ -222,7 +222,7 @@ class PointerController {
    public processPointerMove (cPoint: Point) : boolean {
       const wctx = this.wctx;
       if (wctx.iState.planeDragging && this.dragStartPos) {
-         wctx.adjustPlaneOrigin(cPoint, this.dragStartPos);
+         wctx.moveCoordinatePlane(cPoint, this.dragStartPos);
          wctx.refresh();
          wctx.fireViewportChangeEvent();
          return true; }
@@ -316,12 +316,12 @@ class TouchController {
    private wctx:              WidgetContext;
    private pointerController: PointerController;
    private zooming:           boolean = false;
-   private zoomLCenter:       Point;
+   private zoomLCenter:       Point;                       // zoom center point in logical coordinates
    private zoomStartDist:     number;
    private zoomStartFactorX:  number;
    private zoomStartFactorY:  number;
-   private zoomX:             boolean;
-   private zoomY:             boolean;
+   private zoomX:             boolean;                     // true when zooming in X direction
+   private zoomY:             boolean;                     // true when zooming in y direction
 
    constructor (wctx: WidgetContext) {
       this.wctx = wctx;
@@ -380,14 +380,15 @@ class TouchController {
       const yDist = Math.abs(cPoint1.y - cPoint2.y);
       this.zoomLCenter = wctx.mapCanvasToLogicalCoordinates(cCenter);
       this.zoomStartDist = PointUtils.computeDistance(cPoint1, cPoint2);
-      this.zoomStartFactorX = wctx.vState.zoomFactorX;
-      this.zoomStartFactorY = wctx.vState.zoomFactorY;
+      this.zoomStartFactorX = wctx.getZoomFactor(true);
+      this.zoomStartFactorY = wctx.getZoomFactor(false);
       this.zoomX = xDist * 2 > yDist;
       this.zoomY = yDist * 2 > xDist;
       this.zooming = true; }
 
    private zoom (touches: TouchList) {
       const wctx = this.wctx;
+      const vState = wctx.vState;
       const touch1 = touches[0];
       const touch2 = touches[1];
       const cPoint1 = this.getCanvasCoordinatesFromTouch(touch1);
@@ -396,10 +397,10 @@ class TouchController {
       const newDist = PointUtils.computeDistance(cPoint1, cPoint2);
       const f = newDist / this.zoomStartDist;
       if (this.zoomX) {
-         wctx.vState.zoomFactorX = this.zoomStartFactorX * f; }
+         vState.xMax = vState.xMin + wctx.canvas.width / (this.zoomStartFactorX * f); }
       if (this.zoomY) {
-         wctx.vState.zoomFactorY = this.zoomStartFactorY * f; }
-      wctx.adjustPlaneOrigin(newCCenter, this.zoomLCenter);
+         vState.yMax = vState.yMin + wctx.canvas.height / (this.zoomStartFactorY * f); }
+      wctx.moveCoordinatePlane(newCCenter, this.zoomLCenter);
       wctx.refresh();
       wctx.fireViewportChangeEvent(); }}
 
@@ -529,19 +530,19 @@ class WidgetContext {
       this.resetInteractionState(); }
 
    public mapLogicalToCanvasXCoordinate (lx: number) : number {
-      return (lx - this.vState.planeOrigin.x) * this.vState.zoomFactorX; }
+      return (lx - this.vState.xMin) * this.canvas.width / (this.vState.xMax - this.vState.xMin); }
 
    public mapLogicalToCanvasYCoordinate (ly: number) : number {
-      return this.canvas.height - (ly - this.vState.planeOrigin.y) * this.vState.zoomFactorY; }
+      return this.canvas.height - (ly - this.vState.yMin) * this.canvas.height / (this.vState.yMax - this.vState.yMin); }
 
    public mapLogicalToCanvasCoordinates (lPoint: Point) : Point {
       return {x: this.mapLogicalToCanvasXCoordinate(lPoint.x), y: this.mapLogicalToCanvasYCoordinate(lPoint.y)}; }
 
    public mapCanvasToLogicalXCoordinate (cx: number) : number {
-      return this.vState.planeOrigin.x + cx / this.vState.zoomFactorX; }
+      return this.vState.xMin + cx * (this.vState.xMax - this.vState.xMin) / this.canvas.width; }
 
    public mapCanvasToLogicalYCoordinate (cy: number) : number {
-      return this.vState.planeOrigin.y + (this.canvas.height - cy) / this.vState.zoomFactorY; }
+      return this.vState.yMin + (this.canvas.height - cy) * (this.vState.yMax - this.vState.yMin) / this.canvas.height; }
 
    public mapCanvasToLogicalCoordinates (cPoint: Point) : Point {
       return {x: this.mapCanvasToLogicalXCoordinate(cPoint.x), y: this.mapCanvasToLogicalYCoordinate(cPoint.y)}; }
@@ -556,27 +557,37 @@ class WidgetContext {
       const y = y1 / rect.height * this.canvas.height;
       return {x, y}; }
 
-   public adjustPlaneOrigin (cPoint: Point, lPoint: Point) {
-      const x = lPoint.x - cPoint.x / this.vState.zoomFactorX;
-      const y = lPoint.y - (this.canvas.height - cPoint.y) / this.vState.zoomFactorY;
-      this.vState.planeOrigin = {x, y}; }
+   // Moves the coordinate plane so that `cPoint` (in canvas coordinates) matches
+   // `lPoint` (in logical coordinates), while keeping the zoom factors unchanged.
+   public moveCoordinatePlane (cPoint: Point, lPoint: Point) {
+      const vState = this.vState;
+      const lWidth  = vState.xMax - vState.xMin;
+      const lHeight = vState.yMax - vState.yMin;
+      const cWidth  = this.canvas.width;
+      const cHeight = this.canvas.height;
+      vState.xMin = lPoint.x - cPoint.x * lWidth / cWidth;
+      vState.xMax = vState.xMin + lWidth;
+      vState.yMin = lPoint.y - (cHeight - cPoint.y) * lHeight / cHeight;
+      vState.yMax = vState.yMin + lHeight; }
 
    public getZoomFactor (xy: boolean) : number {
-      return xy ? this.vState.zoomFactorX : this.vState.zoomFactorY; }
+      const vState = this.vState;
+      return xy ? this.canvas.width / (vState.xMax - vState.xMin) : this.canvas.height / (vState.yMax - vState.yMin); }
 
    public zoom (fx: number, fy?: number, cCenter?: Point) {
-      if (fy == null) {
+      const vState = this.vState;
+      if (fy == undefined) {
          fy = fx; }
-      if (cCenter == null) {
+      if (cCenter == undefined) {
          cCenter = {x: this.canvas.width / 2, y: this.canvas.height / 2}; }
       const lCenter = this.mapCanvasToLogicalCoordinates(cCenter);
-      this.vState.zoomFactorX *= fx;
-      this.vState.zoomFactorY *= fy;
-      this.adjustPlaneOrigin(cCenter, lCenter); }
+      vState.xMax = vState.xMin + (vState.xMax - vState.xMin) / fx;
+      vState.yMax = vState.yMin + (vState.yMax - vState.yMin) / fy;
+      this.moveCoordinatePlane(cCenter, lCenter); }
 
    public getGridParms (xy: boolean) : {space: number; span: number; pos: number; decPow: number} | undefined {
       const minSpaceC = xy ? 66 : 50;                                              // minimum space between grid lines in pixel
-      const edge = xy ? this.vState.planeOrigin.x : this.vState.planeOrigin.y;     // canvas edge coordinate
+      const edge = xy ? this.vState.xMin : this.vState.yMin;                       // canvas edge coordinate
       const minSpaceL = minSpaceC / this.getZoomFactor(xy);                        // minimum space between grid lines in logical coordinate units
       const decPow = Math.ceil(Math.log(minSpaceL / 5) / Math.LN10);               // decimal power of grid line space
       const edgeDecPow = (edge == 0) ? -99 : Math.log(Math.abs(edge)) / Math.LN10; // decimal power of canvas coordinates
@@ -609,7 +620,7 @@ class WidgetContext {
 //   - A single Y value.
 //   - An array containing the lowest and highest Y values within the range (x - sampleWidth/2) to (x + sampleWidth/2).
 //   - undefined, when the function value is undefined for this X value.
-// In the current implementation of the function curve viewer, the sample width is 1 / ViewerState.zoomFactorX.
+// In the current implementation of the function curve viewer, the sample width is (xMax - xMin) / canvasWidth.
 export type ViewerFunction = (x: number, sampleWidth: number) => (number | number[] | undefined);
 
 export const enum ZoomMode {x, y, xy}
@@ -617,9 +628,10 @@ export const enum ZoomMode {x, y, xy}
 // Function curve viewer state.
 export interface ViewerState {
    viewerFunction:           ViewerFunction;               // the function to be plotted in this viewer
-   planeOrigin:              Point;                        // coordinate plane origin (logical coordinates of lower left canvas corner)
-   zoomFactorX:              number;                       // zoom factor for x coordinate values
-   zoomFactorY:              number;                       // zoom factor for y coordinate values
+   xMin:                     number;                       // minimum x coordinate of the function graph area
+   xMax:                     number;                       // maximum x coordinate of the function graph area
+   yMin:                     number;                       // minimum y coordinate of the function graph area
+   yMax:                     number;                       // maximum y coordinate of the function graph area
    gridEnabled:              boolean;                      // true to draw a coordinate grid
    xAxisUnit?:               string;                       // unit to be appended to x-axis labels
    yAxisUnit?:               string;                       // unit to be appended to y-axis labels
@@ -629,9 +641,10 @@ export interface ViewerState {
 function cloneViewerState (vState: ViewerState) : ViewerState {
    const vState2 = <ViewerState>{};
    vState2.viewerFunction      = get(vState.viewerFunction, (x: number, _sampleWidth: number) => Math.sin(x));
-   vState2.planeOrigin         = PointUtils.clone(get(vState.planeOrigin, {x: 0, y: 0}));
-   vState2.zoomFactorX         = get(vState.zoomFactorX, 1);
-   vState2.zoomFactorY         = get(vState.zoomFactorY, 1);
+   vState2.xMin                = get(vState.xMin, 0);
+   vState2.xMax                = get(vState.xMax, 1);
+   vState2.yMin                = get(vState.yMin, 0);
+   vState2.yMax                = get(vState.yMax, 1);
    vState2.xAxisUnit           = vState.xAxisUnit;
    vState2.yAxisUnit           = vState.yAxisUnit;
    vState2.gridEnabled         = get(vState.gridEnabled, true);

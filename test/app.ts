@@ -4,9 +4,10 @@ let widget: FunctionCurveViewer.Widget;
 
 const initialViewerState = <FunctionCurveViewer.ViewerState>{
    viewerFunction: viewerFunction,
-   planeOrigin:    {x: -20, y: -1.2},
-   zoomFactorX:    800 / 40,
-   zoomFactorY:    500 / 2.4,
+   xMin:           -20,
+   xMax:           20,
+   yMin:           -1.2,
+   yMax:           1.2,
    xAxisUnit:      "s",
    yAxisUnit:      "m",
    gridEnabled:    true };
