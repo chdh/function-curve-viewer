@@ -477,10 +477,8 @@ class WidgetContext {
       this.canvas = canvas;
       this.eventTarget = new EventTargetPolyfill();
       this.isConnected = false;
-      this.getStyle();
       this.setViewerState(<ViewerState>{});
-      this.resetInteractionState();
-      this.plotter = new FunctionPlotter(this); }
+      this.resetInteractionState(); }
 
    private getStyle() {
       const cs = getComputedStyle(this.canvas);
@@ -497,6 +495,8 @@ class WidgetContext {
       if (connected == this.isConnected) {
          return; }
       if (connected) {
+         this.getStyle();
+         this.plotter         = new FunctionPlotter(this);
          this.mouseController = new MouseController(this);
          this.touchController = new TouchController(this);
          this.kbController    = new KeyboardController(this); }
@@ -666,7 +666,7 @@ export class Widget {
    public setEventTarget (eventTarget: EventTarget) {
       this.wctx.eventTarget = eventTarget; }
 
-   // Is intended to be called after the widget has been inserted or removed from the DOM.
+   // Called after the widget is inserted into or removed from the DOM.
    // It installs or removes the internal event listeners for mouse, touch and keyboard.
    // When the widget is connected, it also adjusts the resolution of the backing bitmap
    // and draws the widget.
