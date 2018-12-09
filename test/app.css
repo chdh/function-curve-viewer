@@ -12,7 +12,8 @@ body {
    border: 1px solid black;
    margin-top: 5px;
    outline: none;
-   --curve-color: red; }
+   --curve-color: #448844;
+   --curve-color2: #444444; }
 
 div.buttons {
    color: #07C;

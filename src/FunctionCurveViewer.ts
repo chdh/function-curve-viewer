@@ -2,7 +2,7 @@ import EventTargetPolyfill from "./EventTargetPolyfill";
 
 //--- Point and PointUtils -----------------------------------------------------
 
-export interface Point {
+interface Point {
    x: number;
    y: number; }
 
@@ -102,7 +102,7 @@ class FunctionPlotter {
       this.drawGridOrLabels(true, false);
       this.drawGridOrLabels(true, true); }
 
-   private drawFunctionCurve() {
+   private drawFunctionCurve (channel: number) {
       // Curve drawing can switch from line mode to fill mode.
       // Line mode is preferred because it looks visually better thanks to antialiasing.
       const enum Mode {skip=0, line, fill}
@@ -114,19 +114,19 @@ class FunctionPlotter {
       const sampleWidth = (wctx.vState.xMax - wctx.vState.xMin) / wctx.canvas.width;
       const pixelCompensation = 0.41;
       ctx.save();
-      ctx.fillStyle = wctx.style.curveColor;
+      ctx.fillStyle = wctx.style.curveColors[channel];
       ctx.strokeStyle = ctx.fillStyle;
       let prevCyLo: number|undefined = undefined;
       let prevCyHi: number|undefined = undefined;
       let pixelAcc = 0;
       let fillModeUsed = false;
-      let mode: number = Mode.skip;                  // "number" is used instead of "Mode" to prevent compiler error, see https://stackoverflow.com/questions/48919455
+      let mode: number = Mode.skip;                        // "number" is used instead of "Mode" to prevent compiler error, see https://stackoverflow.com/questions/48919455
       startMode();
       for (let cx = 0; cx < canvasWidth; cx++) {
          const lx = wctx.mapCanvasToLogicalXCoordinate(cx + 0.5);
-         const ly = viewerFunction(lx, sampleWidth);
-         let lyLo: number;
-         let lyHi: number;
+         const ly = viewerFunction(lx, sampleWidth, channel);
+         let lyLo: number;                                 // logical y low
+         let lyHi: number;                                 // logical y high
          if (ly == undefined) {
             switchMode(Mode.skip);
             continue; }
@@ -136,6 +136,8 @@ class FunctionPlotter {
           else {
             lyLo = ly;
             lyHi = ly; }
+         lyLo = mapInfinity(lyLo);
+         lyHi = mapInfinity(lyHi);
          if (!isFinite(lyLo) || !isFinite(lyHi)) {
             switchMode(Mode.skip); }
           else if (!fillModeUsed && lyLo == lyHi) {
@@ -199,7 +201,16 @@ class FunctionPlotter {
       this.clearCanvas();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
-      this.drawFunctionCurve(); }}
+      for (let channel = wctx.vState.channels - 1; channel >= 0; channel--) {
+         this.drawFunctionCurve(channel); }}}
+
+function mapInfinity (v: number) {
+   if (v == Infinity) {
+      return 1E300; }
+    else if (v == -Infinity) {
+      return -1E300; }
+    else {
+      return v; }}
 
 //--- Pointer controller -------------------------------------------------------
 
@@ -455,7 +466,7 @@ interface Style {
    gridColor0:               string;
    gridColor10:              string;
    gridColor:                string;
-   curveColor:               string; }
+   curveColors:              string[]; }
 
 class WidgetContext {
 
@@ -469,8 +480,8 @@ class WidgetContext {
    public isConnected:       boolean;
    public style:             Style;
 
-   public vState:            ViewerState;                  // current viewer state
-   public initialVState:     ViewerState;                  // last set initial viewer state
+   public vState:            InternalViewerState;          // current viewer state
+   public initialVState:     InternalViewerState;          // last set initial viewer state
    public iState:            InteractionState;
 
    constructor (canvas: HTMLCanvasElement) {
@@ -488,7 +499,15 @@ class WidgetContext {
       style.gridColor0      = cs.getPropertyValue("--grid-color-0")     || "#989898";
       style.gridColor10     = cs.getPropertyValue("--grid-color-10")    || "#D4D4D4";
       style.gridColor       = cs.getPropertyValue("--grid-color")       || "#EEEEEE";
-      style.curveColor      = cs.getPropertyValue("--curve-color")      || "#44CC44";
+      style.curveColors = Array(maxChannels);
+      style.curveColors[0] = cs.getPropertyValue("--curve-color0") || cs.getPropertyValue("--curve-color") || "#44CC44";
+      style.curveColors[1] = cs.getPropertyValue("--curve-color1") || "#4444CC";
+      style.curveColors[2] = cs.getPropertyValue("--curve-color2") || "#CC4444";
+      style.curveColors[3] = cs.getPropertyValue("--curve-color3") || "#CC44CC";
+      style.curveColors[4] = cs.getPropertyValue("--curve-color4") || "#CCCC44";
+      style.curveColors[5] = cs.getPropertyValue("--curve-color5") || "#44CCCC";
+      for (let channel = 6; channel < maxChannels; channel++) {
+         style.curveColors[channel] = cs.getPropertyValue("--curve-color" + channel) || "#444444"; }
       this.style = style; }
 
    public setConnected (connected: boolean) {
@@ -612,40 +631,59 @@ class WidgetContext {
 
 //--- Viewer state -------------------------------------------------------------
 
-// The viewer function receives an X value and the sample width used to plot the function graph.
-// It returns one of the following:
-//   - A single Y value.
-//   - An array containing the lowest and highest Y values within the range (x - sampleWidth/2) to (x + sampleWidth/2).
-//   - undefined, when the function value is undefined for this X value.
-// In the current implementation of the function curve viewer, the sample width is (xMax - xMin) / canvasWidth.
-export type ViewerFunction = (x: number, sampleWidth: number) => (number | number[] | undefined);
+const maxChannels = 10;
+
+/**
+* The viewer function provides the Y values for the function graph to be plotted.
+*
+* @param x
+*    X coordinate value.
+* @param sampleWidth
+*    Sample width used to plot the function graph.
+*    In the current implementation of the function curve viewer, the sample width is (xMax - xMin) / canvasWidth.
+* @param channel
+*    0-based channel number.
+* @return
+*   The return value can be:
+*   - A single Y value.
+*   - An array containing the lowest and highest Y values for the X range (x - sampleWidth / 2) to (x + sampleWidth / 2).
+*   - undefined, when the function value is undefined for this X value.
+*/
+export type ViewerFunction = (x: number, sampleWidth: number, channel: number) => (number | number[] | undefined);
 
 export const enum ZoomMode {x, y, xy}
 
 // Function curve viewer state.
 export interface ViewerState {
    viewerFunction:           ViewerFunction;               // the function to be plotted in this viewer
+   channels?:                number;                       // number of channels to plot (number of graphs)
    xMin:                     number;                       // minimum x coordinate of the function graph area
    xMax:                     number;                       // maximum x coordinate of the function graph area
    yMin:                     number;                       // minimum y coordinate of the function graph area
    yMax:                     number;                       // maximum y coordinate of the function graph area
-   gridEnabled:              boolean;                      // true to draw a coordinate grid
+   gridEnabled?:             boolean;                      // true to draw a coordinate grid
    xAxisUnit?:               string;                       // unit to be appended to x-axis labels
    yAxisUnit?:               string;                       // unit to be appended to y-axis labels
-   primaryZoomMode:          ZoomMode; }                   // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+   primaryZoomMode?:         ZoomMode; }                   // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+
+interface InternalViewerState extends ViewerState {        // used to override optional fields to non-optional
+   channels:                 number;
+   gridEnabled:              boolean;
+   primaryZoomMode:          ZoomMode; }
 
 // Clones and adds missing fields.
-function cloneViewerState (vState: ViewerState) : ViewerState {
-   const vState2 = <ViewerState>{};
+function cloneViewerState (vState: ViewerState) : InternalViewerState {
+   const vState2 = <InternalViewerState>{};
    vState2.viewerFunction      = get(vState.viewerFunction, (x: number, _sampleWidth: number) => Math.sin(x));
+   vState2.channels            = Math.min(maxChannels, get(vState.channels, 1)!);
    vState2.xMin                = get(vState.xMin, 0);
    vState2.xMax                = get(vState.xMax, 1);
    vState2.yMin                = get(vState.yMin, 0);
    vState2.yMax                = get(vState.yMax, 1);
    vState2.xAxisUnit           = vState.xAxisUnit;
    vState2.yAxisUnit           = vState.yAxisUnit;
-   vState2.gridEnabled         = get(vState.gridEnabled, true);
-   vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy);
+   vState2.gridEnabled         = get(vState.gridEnabled, true)!;
+   vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy)!;
    return vState2;
    function get<T> (value: T, defaultValue: T) : T {
       return (value === undefined) ? defaultValue : value; }}
