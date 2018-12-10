@@ -8,12 +8,13 @@ body {
 #functionCurveViewer {
    display: block;
    width: 800px;
-   height: 500px;
+   height: 600px;
    border: 1px solid black;
    margin-top: 5px;
    outline: none;
    --curve-color: #448844;
-   --curve-color2: #444444; }
+   --curve-color1: #444444;
+   }
 
 div.buttons {
    color: #07C;

@@ -4,7 +4,7 @@ let widget: FunctionCurveViewer.Widget;
 
 const initialViewerState = <FunctionCurveViewer.ViewerState>{
    viewerFunction: viewerFunction,
-   channels:       3,
+   channels:       50,
    xMin:           -20,
    xMax:           20,
    yMin:           -1.2,
@@ -28,7 +28,9 @@ function viewerFunction (x: number, _sampleWidth: number, channel: number) {
       case 2: {
          return Math.tan(x) ** 2 / x; }
       default: {
-         throw Error(); }}}
+         if (x < 10) {
+            return NaN; }
+         return -1 + channel * 0.8 / 50; }}}
 
 function toggleHelp() {
    const t = document.getElementById("helpText")!;

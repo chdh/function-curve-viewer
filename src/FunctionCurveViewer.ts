@@ -114,7 +114,7 @@ class FunctionPlotter {
       const sampleWidth = (wctx.vState.xMax - wctx.vState.xMin) / wctx.canvas.width;
       const pixelCompensation = 0.41;
       ctx.save();
-      ctx.fillStyle = wctx.style.curveColors[channel];
+      ctx.fillStyle = wctx.style.curveColors[channel] || "#666666";
       ctx.strokeStyle = ctx.fillStyle;
       let prevCyLo: number|undefined = undefined;
       let prevCyHi: number|undefined = undefined;
@@ -499,16 +499,17 @@ class WidgetContext {
       style.gridColor0      = cs.getPropertyValue("--grid-color-0")     || "#989898";
       style.gridColor10     = cs.getPropertyValue("--grid-color-10")    || "#D4D4D4";
       style.gridColor       = cs.getPropertyValue("--grid-color")       || "#EEEEEE";
+      const maxChannels = 100;
       style.curveColors = Array(maxChannels);
-      style.curveColors[0] = cs.getPropertyValue("--curve-color0") || cs.getPropertyValue("--curve-color") || "#44CC44";
-      style.curveColors[1] = cs.getPropertyValue("--curve-color1") || "#4444CC";
-      style.curveColors[2] = cs.getPropertyValue("--curve-color2") || "#CC4444";
-      style.curveColors[3] = cs.getPropertyValue("--curve-color3") || "#CC44CC";
-      style.curveColors[4] = cs.getPropertyValue("--curve-color4") || "#CCCC44";
-      style.curveColors[5] = cs.getPropertyValue("--curve-color5") || "#44CCCC";
-      for (let channel = 6; channel < maxChannels; channel++) {
-         style.curveColors[channel] = cs.getPropertyValue("--curve-color" + channel) || "#444444"; }
+      style.curveColors[0] = cs.getPropertyValue("--curve-color0") || cs.getPropertyValue("--curve-color") || this.generateCurveColor(0);
+      for (let channel = 1; channel < maxChannels; channel++) {
+         style.curveColors[channel] = cs.getPropertyValue("--curve-color" + channel) || this.generateCurveColor(channel); }
       this.style = style; }
+
+   private generateCurveColor (i: number) : string {
+      const hueStart = 120;
+      const hue = Math.round(hueStart + i * 360 / 6.4) % 360;
+      return "hsl(" + hue + ",57%,53%)"; }
 
    public setConnected (connected: boolean) {
       if (connected == this.isConnected) {
@@ -631,8 +632,6 @@ class WidgetContext {
 
 //--- Viewer state -------------------------------------------------------------
 
-const maxChannels = 10;
-
 /**
 * The viewer function provides the Y values for the function graph to be plotted.
 *
@@ -675,7 +674,7 @@ interface InternalViewerState extends ViewerState {        // used to override o
 function cloneViewerState (vState: ViewerState) : InternalViewerState {
    const vState2 = <InternalViewerState>{};
    vState2.viewerFunction      = get(vState.viewerFunction, (x: number, _sampleWidth: number) => Math.sin(x));
-   vState2.channels            = Math.min(maxChannels, get(vState.channels, 1)!);
+   vState2.channels            = get(vState.channels, 1)!;
    vState2.xMin                = get(vState.xMin, 0);
    vState2.xMax                = get(vState.xMax, 1);
    vState2.yMin                = get(vState.yMin, 0);
