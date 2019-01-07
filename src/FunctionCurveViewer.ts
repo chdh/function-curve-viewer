@@ -150,8 +150,8 @@ class FunctionPlotter {
                ctx.lineTo(cx, cy);
                break; }
             case Mode.fill: {
-               const cyLo0 = Math.max(0, Math.min(canvasHeight, wctx.mapLogicalToCanvasYCoordinate(lyHi)));      // (hi/lo reversed, because Y coordinate polarity is switched)
-               const cyHi0 = Math.max(0, Math.min(canvasHeight, wctx.mapLogicalToCanvasYCoordinate(lyLo)));
+               const cyLo0 = Math.max(-1, Math.min(canvasHeight, wctx.mapLogicalToCanvasYCoordinate(lyHi)));   // (hi/lo reversed, because Y coordinate polarity is switched)
+               const cyHi0 = Math.max(-1, Math.min(canvasHeight, wctx.mapLogicalToCanvasYCoordinate(lyLo)));
                const cyLo1 = Math.floor(cyLo0);
                const cyHi1 = Math.ceil(cyHi0);
                const cyLo2 = cyLo1;
