@@ -198,11 +198,19 @@ class FunctionPlotter {
 
    public paint() {
       const wctx = this.wctx;
+      const vState = wctx.vState;
       this.clearCanvas();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
       for (let channel = wctx.vState.channels - 1; channel >= 0; channel--) {
-         this.drawFunctionCurve(channel); }}}
+         this.drawFunctionCurve(channel); }
+      if (vState.customPaintFunction) {
+         vState.customPaintFunction({
+            vState,
+            ctx: this.ctx,
+            mapLogicalToCanvasXCoordinate: (x: number) => wctx.mapLogicalToCanvasXCoordinate(x),
+            mapLogicalToCanvasYCoordinate: (y: number) => wctx.mapLogicalToCanvasYCoordinate(y),
+            curveColors: wctx.style.curveColors}); }}}
 
 function mapInfinity (v: number) {
    if (v == Infinity) {
@@ -663,7 +671,8 @@ export interface ViewerState {
    gridEnabled?:             boolean;                      // true to draw a coordinate grid
    xAxisUnit?:               string;                       // unit to be appended to x-axis labels
    yAxisUnit?:               string;                       // unit to be appended to y-axis labels
-   primaryZoomMode?:         ZoomMode; }                   // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+   primaryZoomMode?:         ZoomMode;                     // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+   customPaintFunction?:     CustomPaintFunction; }        // custom paint function
 
 interface InternalViewerState extends ViewerState {        // used to override optional fields to non-optional
    channels:                 number;
@@ -683,9 +692,24 @@ function cloneViewerState (vState: ViewerState) : InternalViewerState {
    vState2.yAxisUnit           = vState.yAxisUnit;
    vState2.gridEnabled         = get(vState.gridEnabled, true)!;
    vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy)!;
+   vState2.customPaintFunction = vState.customPaintFunction;
    return vState2;
    function get<T> (value: T, defaultValue: T) : T {
       return (value === undefined) ? defaultValue : value; }}
+
+//--- Custom paint function ----------------------------------------------------
+
+/**
+* A custom paint function can be used to draw additional content on the canvas.
+*/
+export type CustomPaintFunction = (pctx: CustomPaintContext) => void;
+
+export interface CustomPaintContext {
+   vState:                   ViewerState;                  // viewer state
+   ctx:                      CanvasRenderingContext2D;     // canvas drawing context
+   mapLogicalToCanvasXCoordinate: (lx: number) => number;  // function to map x coordinate from logical to canvas
+   mapLogicalToCanvasYCoordinate: (ly: number) => number;  // function to map y coordinate from logical to canvas
+   curveColors:              string[]; }                   // colors used for drawing function plot
 
 //--- Widget -------------------------------------------------------------------
 

@@ -3,15 +3,16 @@ import * as FunctionCurveViewer from "function-curve-viewer";
 let widget: FunctionCurveViewer.Widget;
 
 const initialViewerState = <FunctionCurveViewer.ViewerState>{
-   viewerFunction: viewerFunction,
-   channels:       50,
-   xMin:           -20,
-   xMax:           20,
-   yMin:           -1.2,
-   yMax:           1.2,
-   xAxisUnit:      "s",
-   yAxisUnit:      "m",
-   gridEnabled:    true };
+   viewerFunction:           viewerFunction,
+   channels:                 50,
+   xMin:                     -20,
+   xMax:                     20,
+   yMin:                     -1.2,
+   yMax:                     1.2,
+   xAxisUnit:                "s",
+   yAxisUnit:                "m",
+   gridEnabled:              true,
+   customPaintFunction:      customPaintFunction };
 
 function viewerFunction (x: number, _sampleWidth: number, channel: number) {
    switch (channel) {
@@ -31,6 +32,24 @@ function viewerFunction (x: number, _sampleWidth: number, channel: number) {
          if (x < 10) {
             return NaN; }
          return -1 + channel * 0.8 / 50; }}}
+
+function customPaintFunction (pctx: FunctionCurveViewer.CustomPaintContext) {
+   drawSpiral(-12, 0.7, 5, 0.4, 0.75, 25, pctx); }
+
+function drawSpiral (centerX: number, centerY: number, widthX: number, widthY: number, growthFactor: number, revolutions: number, pctx: FunctionCurveViewer.CustomPaintContext) {
+   const ctx = pctx.ctx;
+   ctx.save();
+   ctx.strokeStyle = pctx.curveColors[0];
+   ctx.beginPath();
+   for (let w = 0; w < revolutions * 2 * Math.PI; w += 0.02) {
+      const g = growthFactor ** (w / (2 * Math.PI));
+      const lx = centerX + g * Math.cos(w) * widthX;
+      const ly = centerY + g * Math.sin(w) * widthY;
+      const cx = pctx.mapLogicalToCanvasXCoordinate(lx);
+      const cy = pctx.mapLogicalToCanvasYCoordinate(ly);
+      ctx.lineTo(cx, cy); }
+   ctx.stroke();
+   ctx.restore(); }
 
 function toggleHelp() {
    const t = document.getElementById("helpText")!;
