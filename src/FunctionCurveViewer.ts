@@ -108,7 +108,7 @@ class FunctionPlotter {
       const enum Mode {skip=0, line, fill}
       const wctx = this.wctx;
       const ctx = this.ctx;
-      const viewerFunction = wctx.vState.viewerFunction;
+      const viewerFunction = wctx.vState.viewerFunction!;
       const canvasWidth = wctx.canvas.width;
       const canvasHeight = wctx.canvas.height;
       const sampleWidth = (wctx.vState.xMax - wctx.vState.xMin) / wctx.canvas.width;
@@ -202,8 +202,9 @@ class FunctionPlotter {
       this.clearCanvas();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
-      for (let channel = wctx.vState.channels - 1; channel >= 0; channel--) {
-         this.drawFunctionCurve(channel); }
+      if (wctx.vState.viewerFunction) {
+         for (let channel = wctx.vState.channels - 1; channel >= 0; channel--) {
+            this.drawFunctionCurve(channel); }}
       if (vState.customPaintFunction) {
          vState.customPaintFunction({
             vState,
@@ -662,7 +663,7 @@ export const enum ZoomMode {x, y, xy}
 
 // Function curve viewer state.
 export interface ViewerState {
-   viewerFunction:           ViewerFunction;               // the function to be plotted in this viewer
+   viewerFunction?:          ViewerFunction;               // the function to be plotted in this viewer
    channels?:                number;                       // number of channels to plot (number of graphs)
    xMin:                     number;                       // minimum x coordinate of the function graph area
    xMax:                     number;                       // maximum x coordinate of the function graph area
@@ -682,7 +683,7 @@ interface InternalViewerState extends ViewerState {        // used to override o
 // Clones and adds missing fields.
 function cloneViewerState (vState: ViewerState) : InternalViewerState {
    const vState2 = <InternalViewerState>{};
-   vState2.viewerFunction      = get(vState.viewerFunction, (x: number, _sampleWidth: number) => Math.sin(x));
+   vState2.viewerFunction      = vState.viewerFunction;
    vState2.channels            = get(vState.channels, 1)!;
    vState2.xMin                = get(vState.xMin, 0);
    vState2.xMax                = get(vState.xMax, 1);
