@@ -298,6 +298,8 @@ class MouseController {
 
    private wheelEventListener = (event: WheelEvent) => {
       const wctx = this.wctx;
+      if (!wctx.hasFocus()) {
+         return; }
       const cPoint = this.getCanvasCoordinatesFromEvent(event);
       if (event.deltaY == 0) {
          return; }
@@ -637,7 +639,10 @@ class WidgetContext {
 
    public fireViewportChangeEvent() {
       const event = new CustomEvent("viewportchange");
-      this.eventTarget.dispatchEvent(event); }}
+      this.eventTarget.dispatchEvent(event); }
+
+   public hasFocus() : boolean {
+      return document.activeElement === this.canvas; }}
 
 //--- Viewer state -------------------------------------------------------------
 
