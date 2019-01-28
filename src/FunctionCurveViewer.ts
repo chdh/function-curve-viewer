@@ -298,7 +298,7 @@ class MouseController {
 
    private wheelEventListener = (event: WheelEvent) => {
       const wctx = this.wctx;
-      if (!wctx.hasFocus()) {
+      if (wctx.vState.focusShield && !wctx.hasFocus()) {
          return; }
       const cPoint = this.getCanvasCoordinatesFromEvent(event);
       if (event.deltaY == 0) {
@@ -678,6 +678,7 @@ export interface ViewerState {
    xAxisUnit?:               string;                       // unit to be appended to x-axis labels
    yAxisUnit?:               string;                       // unit to be appended to y-axis labels
    primaryZoomMode?:         ZoomMode;                     // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+   focusShield?:             boolean;                      // true to ignore mouse wheel events without focus
    customPaintFunction?:     CustomPaintFunction; }        // custom paint function
 
 interface InternalViewerState extends ViewerState {        // used to override optional fields to non-optional
@@ -698,6 +699,7 @@ function cloneViewerState (vState: ViewerState) : InternalViewerState {
    vState2.yAxisUnit           = vState.yAxisUnit;
    vState2.gridEnabled         = get(vState.gridEnabled, true)!;
    vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy)!;
+   vState2.focusShield         = get(vState.focusShield, false)!;
    vState2.customPaintFunction = vState.customPaintFunction;
    return vState2;
    function get<T> (value: T, defaultValue: T) : T {
