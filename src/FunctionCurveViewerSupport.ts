@@ -3,17 +3,24 @@
 import {ViewerFunction} from "./FunctionCurveViewer";
 
 // Creates and returns a viewer function for discrete sampled values.
-// When zoomed in, linear interpolation is used.
+// When zoomed in, linear interpolation is used (if `nearestNeighbor == false`).
 // When zommed out, min/max values of the corresponding x value range are used to display the envelope of the curve.
 // The parameter scalingFactor is usually the sample rate.
-export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number, offset = 0) : ViewerFunction {
+export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number, offset = 0, nearestNeighbor = false) : ViewerFunction {
    return function (x: number, sampleWidth: number) : number | number[] | undefined {
       const pos = x * scalingFactor + offset;
       const width = sampleWidth * scalingFactor;
       if (width < 1) {
-         return interpolateLinear(samples, pos); }
+         if (nearestNeighbor) {
+            return interpolateNearestNeighbor(samples, pos); }
+          else {
+            return interpolateLinear(samples, pos); }}
        else {
          return findValueRange(samples, pos - width / 2, pos + width / 2); }}; }
+
+function interpolateNearestNeighbor (samples: Float64Array, pos: number) : number | undefined {
+   const p = Math.round(pos);
+   return (p >= 0 && p < samples.length) ? samples[p] : undefined; }
 
 function interpolateLinear (samples: Float64Array, pos: number) : number | undefined {
    const p1 = Math.floor(pos);
