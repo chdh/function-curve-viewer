@@ -256,25 +256,26 @@ class PointerController {
       this.releaseAllPointers(); }
 
    private pointerDownEventListener = (event: PointerEvent) => {
-      const wctx = this.wctx;
-      this.stopPlaneDragging();
-      this.stopZooming();
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       this.trackPointer(event);
-      if (this.pointers.size == 1) {                       // left click or single touch
-         this.startPlaneDragging();
-         wctx.canvas.focus(); }
-       else if (this.pointers.size == 2) {                 // zoom gesture
-         this.startZooming();
-         event.preventDefault(); }
+      this.switchMode();
       event.preventDefault(); };
 
    private pointerUpEventListener = (event: PointerEvent) => {
       this.releasePointer(event.pointerId);
+      this.switchMode();
+      event.preventDefault(); };
+
+   private switchMode() {
+      const wctx = this.wctx;
       this.stopPlaneDragging();
       this.stopZooming();
-      event.preventDefault(); };
+      if (this.pointers.size == 1) {                       // left click or single touch
+         this.startPlaneDragging();
+         wctx.canvas.focus(); }
+       else if (this.pointers.size == 2) {                 // zoom gesture
+         this.startZooming(); }}
 
    private pointerMoveEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
@@ -312,14 +313,13 @@ class PointerController {
       this.dragStartPos = lPoint;
       wctx.refresh(); }
 
-   private stopPlaneDragging() : boolean {
+   private stopPlaneDragging() {
       const wctx = this.wctx;
-      if (!wctx.iState.planeDragging) {
-         return false; }
-      wctx.iState.planeDragging = false;
       this.dragStartPos = undefined;
-      wctx.refresh();
-      return true; }
+      if (!wctx.iState.planeDragging) {
+         return; }
+      wctx.iState.planeDragging = false;
+      wctx.refresh(); }
 
    public dragPlane() {
       const wctx = this.wctx;
@@ -348,11 +348,8 @@ class PointerController {
       this.zoomY = yDist * 2 > xDist;
       this.zooming = true; }
 
-   private stopZooming() : boolean {
-      if (!this.zooming) {
-         return false; }
-      this.zooming = false;
-      return true; }
+   private stopZooming() {
+      this.zooming = false; }
 
    private zoom() {
       const wctx = this.wctx;
