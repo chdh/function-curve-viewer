@@ -13,7 +13,7 @@
       "outDir": "tempBuild",
       "strictFunctionTypes": true,
       "strictNullChecks": true,
-      "target": "ES6"
+      "target": "ES2017"
    },
    "files": ["app.ts"]
 }

@@ -1,6 +1,6 @@
 {
    "name": "function-curve-viewer",
-   "version": "1.0.19",
+   "version": "1.0.20",
    "description": "A function curve viewer widget / web component",
    "types": "dist/Index.d.ts",
    "module": "dist/Index.js",
@@ -15,7 +15,8 @@
    "contributors": [
       {
          "name": "Christian d'Heureuse",
-         "email": "chdh@inventec.ch"
+         "email": "chdh@inventec.ch",
+         "url": "http://www.source-code.biz"
       }
    ],
    "scripts": {

@@ -12,6 +12,7 @@ body {
    border: 1px solid black;
    margin-top: 5px;
    outline: none;
+   touch-action: none;
    --curve-color: red; }
 
 div.buttons {

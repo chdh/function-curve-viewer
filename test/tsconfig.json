@@ -1,5 +1,6 @@
 {
    "compilerOptions": {
+      "allowUnreachableCode": false,
       "alwaysStrict": true,
       "baseUrl": ".",
       "lib": ["ES6", "DOM"],

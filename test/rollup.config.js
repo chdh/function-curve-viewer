@@ -1,4 +1,4 @@
-import alias from "rollup-plugin-alias";
+import alias from "@rollup/plugin-alias";
 
 export default {
    input: "tempBuild/app.js",
@@ -8,7 +8,9 @@ export default {
    },
    plugins: [
       alias({
-         "function-curve-viewer": "../dist/FunctionCurveViewer.js"
+         entries: {
+            "function-curve-viewer": "../dist/FunctionCurveViewer.js"
+         }
       })
    ]
 };
