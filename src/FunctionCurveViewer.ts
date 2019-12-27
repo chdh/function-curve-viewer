@@ -343,8 +343,9 @@ class PointerController {
       this.zoomStartDist = PointUtils.computeDistance(cPoint1, cPoint2);
       this.zoomStartFactorX = wctx.getZoomFactor(true);
       this.zoomStartFactorY = wctx.getZoomFactor(false);
-      this.zoomX = xDist * 2 > yDist;
-      this.zoomY = yDist * 2 > xDist;
+      const t = Math.tan(Math.PI / 8);
+      this.zoomX = xDist > t * yDist;
+      this.zoomY = yDist > t * xDist;
       this.zooming = true; }
 
    private stopZooming() {

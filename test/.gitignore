@@ -3,3 +3,4 @@ build.bat
 node_modules
 package-lock.json
 tempBuild
+app.js
