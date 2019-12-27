@@ -311,15 +311,14 @@ class PointerController {
       const lPoint = wctx.mapCanvasToLogicalCoordinates(cPoint);
       wctx.iState.planeDragging = true;
       this.dragStartPos = lPoint;
-      wctx.refresh(); }
+      wctx.requestRefresh(); }
 
    private stopPlaneDragging() {
       const wctx = this.wctx;
-      this.dragStartPos = undefined;
-      if (!wctx.iState.planeDragging) {
-         return; }
+      if (wctx.iState.planeDragging) {
+         wctx.requestRefresh(); }
       wctx.iState.planeDragging = false;
-      wctx.refresh(); }
+      this.dragStartPos = undefined; }
 
    public dragPlane() {
       const wctx = this.wctx;
@@ -327,7 +326,7 @@ class PointerController {
          return; }
       const cPoint = this.getCanvasCoordinates();
       wctx.moveCoordinatePlane(cPoint, this.dragStartPos);
-      wctx.refresh();
+      wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); }
 
    private startZooming() {
@@ -367,7 +366,7 @@ class PointerController {
       if (this.zoomY) {
          vState.yMax = vState.yMin + wctx.canvas.height / (this.zoomStartFactorY * f); }
       wctx.moveCoordinatePlane(newCCenter, this.zoomLCenter);
-      wctx.refresh();
+      wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); }
 
    private wheelEventListener = (event: WheelEvent) => {
@@ -397,7 +396,7 @@ class PointerController {
          default: {
             fx = f; fy = f; }}
       wctx.zoom(fx, fy, cPoint);
-      wctx.refresh();
+      wctx.requestRefresh();
       wctx.fireViewportChangeEvent();
       event.preventDefault(); };
 
@@ -437,17 +436,17 @@ class KeyboardController {
             const fx = (key == '+' || key == 'X') ? Math.SQRT2 : (key == '-' || key == 'x') ? Math.SQRT1_2 : 1;
             const fy = (key == '+' || key == 'Y') ? Math.SQRT2 : (key == '-' || key == 'y') ? Math.SQRT1_2 : 1;
             wctx.zoom(fx, fy);
-            wctx.refresh();
+            wctx.requestRefresh();
             wctx.fireViewportChangeEvent();
             return true; }
          case "r": {
             wctx.reset();
-            wctx.refresh();
+            wctx.requestRefresh();
             wctx.fireViewportChangeEvent();
             return true; }
          case "g": {
             wctx.vState.gridEnabled = !wctx.vState.gridEnabled;
-            wctx.refresh();
+            wctx.requestRefresh();
             return true; }
          default: {
             return false; }}}}
@@ -455,35 +454,37 @@ class KeyboardController {
 //--- Internal widget context --------------------------------------------------
 
 interface InteractionState {
-   planeDragging:            boolean; }                    // true if the coordinate plane is beeing dragged
+   planeDragging:                      boolean; }                    // true if the coordinate plane is beeing dragged
 
 interface Style {
-   backgroundColor:          string;
-   labelTextColor:           string;
-   gridColor0:               string;
-   gridColor10:              string;
-   gridColor:                string;
-   curveColors:              string[]; }
+   backgroundColor:                    string;
+   labelTextColor:                     string;
+   gridColor0:                         string;
+   gridColor10:                        string;
+   gridColor:                          string;
+   curveColors:                        string[]; }
 
 class WidgetContext {
 
-   public plotter:           FunctionPlotter;
-   public pointerController: PointerController;
-   public kbController:      KeyboardController;
+   public  plotter:                    FunctionPlotter;
+   public  pointerController:          PointerController;
+   public  kbController:               KeyboardController;
 
-   public canvas:            HTMLCanvasElement;            // the DOM canvas element
-   public eventTarget:       EventTarget;
-   public isConnected:       boolean;
-   public style:             Style;
+   public  canvas:                     HTMLCanvasElement;            // the DOM canvas element
+   public  eventTarget:                EventTarget;
+   public  isConnected:                boolean;
+   public  style:                      Style;
+   private animationFramePending:      boolean;
 
-   public vState:            InternalViewerState;          // current viewer state
-   public initialVState:     InternalViewerState;          // last set initial viewer state
-   public iState:            InteractionState;
+   public  vState:                     InternalViewerState;          // current viewer state
+   public  initialVState:              InternalViewerState;          // last set initial viewer state
+   public  iState:                     InteractionState;
 
    constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
       this.eventTarget = new EventTargetPolyfill();
       this.isConnected = false;
+      this.animationFramePending = false;
       this.setViewerState(<ViewerState>{});
       this.resetInteractionState(); }
 
@@ -518,7 +519,8 @@ class WidgetContext {
        else {
          this.pointerController.dispose();
          this.kbController.dispose(); }
-      this.isConnected = connected; }
+      this.isConnected = connected;
+      this.requestRefresh(); }
 
    public adjustBackingBitmapResolution() {
       this.canvas.width = this.canvas.clientWidth || 200;
@@ -526,7 +528,8 @@ class WidgetContext {
 
    public setViewerState (vState: ViewerState) {
       this.vState = cloneViewerState(vState);
-      this.initialVState = cloneViewerState(vState); }
+      this.initialVState = cloneViewerState(vState);
+      this.requestRefresh(); }
 
    public getViewerState() : ViewerState {
       return cloneViewerState(this.vState); }
@@ -611,8 +614,20 @@ class WidgetContext {
       const pos = span * Math.ceil(p1 / span);                                     // position of first grid line in grid space units
       return {space, span, pos, decPow}; }
 
+   public requestRefresh() {
+      if (this.animationFramePending || !this.isConnected) {
+         return; }
+      requestAnimationFrame(this.animationFrameHandler);
+      this.animationFramePending = true; }
+
+   private animationFrameHandler = () => {
+      this.animationFramePending = false;
+      if (!this.isConnected) {
+         return; }
+      this.refresh(); }
+
    // Re-paints the canvas and updates the cursor.
-   public refresh() {
+   private refresh() {
       this.plotter.paint();
       this.updateCanvasCursorStyle(); }
 
@@ -726,8 +741,7 @@ export class Widget {
       const wctx = this.wctx;
       this.wctx.setConnected(connected);
       if (connected) {
-         wctx.adjustBackingBitmapResolution();
-         wctx.refresh(); }}
+         wctx.adjustBackingBitmapResolution(); }}
 
    // Registers an event listener.
    // Currently only the "viewport-change" event is supported.
@@ -747,9 +761,7 @@ export class Widget {
    // Updates the current state of the function curve viewer.
    public setViewerState (vState: ViewerState) {
       const wctx = this.wctx;
-      wctx.setViewerState(vState);
-      if (wctx.isConnected) {
-         wctx.refresh(); }}
+      wctx.setViewerState(vState); }
 
    // Returns the help text as an array.
    public getRawHelpText() : string[] {
