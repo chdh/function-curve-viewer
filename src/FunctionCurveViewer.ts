@@ -401,6 +401,7 @@ class PointerController {
       wctx.fireViewportChangeEvent();
       event.preventDefault(); };
 
+   // Returns the coordinates of the first pointer.
    private getCanvasCoordinates() : Point {
       if (this.pointers.size < 1) {
          throw new Error("No active pointers."); }
@@ -563,8 +564,8 @@ class WidgetContext {
       const y1 = vPoint.y - rect.top  - (this.canvas.clientTop  || 0);
          // Our canvas element may have a border, but must have no padding.
          // In the future, the CSSOM View Module can probably be used for proper coordinate mapping.
-      const x = x1 / rect.width  * this.canvas.width;
-      const y = y1 / rect.height * this.canvas.height;
+      const x = x1 / this.canvas.clientWidth  * this.canvas.width;
+      const y = y1 / this.canvas.clientHeight * this.canvas.height;
       return {x, y}; }
 
    // Moves the coordinate plane so that `cPoint` (in canvas coordinates) matches
