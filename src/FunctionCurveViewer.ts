@@ -551,7 +551,7 @@ class WidgetContext {
          this.plotter           = new FunctionPlotter(this);
          this.pointerController = new PointerController(this);
          this.kbController      = new KeyboardController(this);
-         this.resizeObserver.observe(this.canvas, {box: "device-pixel-content-box"}); }
+         this.resizeObserver.observe(this.canvas); }
        else {
          this.pointerController.dispose();
          this.kbController.dispose();
@@ -674,8 +674,7 @@ class WidgetContext {
       return document.activeElement === this.canvas; }
 
    private resizeObserverCallback = (entries: ResizeObserverEntry[]) => {
-      const boxes = entries[0].devicePixelContentBoxSize ?? entries[0].contentBoxSize;
-      const box = boxes[0];
+      const box = entries[0].contentBoxSize[0];
       const width = box.inlineSize;
       const height = box.blockSize;
       this.plotter.resize(width, height); }; }
