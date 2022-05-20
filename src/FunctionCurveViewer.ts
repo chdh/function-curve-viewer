@@ -1,4 +1,4 @@
-import EventTargetPolyfill from "./EventTargetPolyfill";
+import EventTargetPolyfill from "./EventTargetPolyfill.js";
 
 //--- Point and PointUtils -----------------------------------------------------
 
@@ -26,8 +26,10 @@ class FunctionPlotter {
 
    private wctx:             WidgetContext;
    private ctx:              CanvasRenderingContext2D;
+   private newCanvasWidth:   number;
+   private newCanvasHeight:  number;
 
-   constructor (wctx: WidgetContext) {
+   public constructor (wctx: WidgetContext) {
       this.wctx = wctx;
       const ctx = wctx.canvas.getContext("2d");
       if (!ctx) {
@@ -199,6 +201,9 @@ class FunctionPlotter {
    public paint() {
       const wctx = this.wctx;
       const vState = wctx.vState;
+      if (this.newCanvasWidth && this.newCanvasHeight && (this.newCanvasWidth != wctx.canvas.width || this.newCanvasHeight != wctx.canvas.height)) {
+         wctx.canvas.width = this.newCanvasWidth;
+         wctx.canvas.height = this.newCanvasHeight; }
       this.clearCanvas();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
@@ -211,7 +216,15 @@ class FunctionPlotter {
             ctx: this.ctx,
             mapLogicalToCanvasXCoordinate: (x: number) => wctx.mapLogicalToCanvasXCoordinate(x),
             mapLogicalToCanvasYCoordinate: (y: number) => wctx.mapLogicalToCanvasYCoordinate(y),
-            curveColors: wctx.style.curveColors}); }}}
+            curveColors: wctx.style.curveColors}); }}
+
+   public resize (width: number, height: number) {
+      const wctx = this.wctx;
+      if (this.newCanvasWidth == width && this.newCanvasHeight == height) {
+         return; }
+      this.newCanvasWidth = width;
+      this.newCanvasHeight = height;
+      wctx.requestRefresh(); }}
 
 function mapInfinity (v: number) {
    if (v == Infinity) {
@@ -237,7 +250,7 @@ class PointerController {
    private zoomX:            boolean;                      // true when zooming in X direction
    private zoomY:            boolean;                      // true when zooming in y direction
 
-   constructor (wctx: WidgetContext) {
+   public constructor (wctx: WidgetContext) {
       this.wctx = wctx;
       this.pointers = new Map();
       wctx.canvas.addEventListener("pointerdown",   this.pointerDownEventListener);
@@ -257,6 +270,8 @@ class PointerController {
 
    private pointerDownEventListener = (event: PointerEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || (event.pointerType == "mouse" && event.button != 0)) {
+         return; }
+      if (this.isPointerInResizeHandle(event)) {
          return; }
       this.trackPointer(event);
       this.switchMode();
@@ -410,7 +425,22 @@ class PointerController {
 
    private getCanvasCoordinatesFromEvent (event: MouseEvent) : Point {
       const wctx = this.wctx;
-      return wctx.mapViewportToCanvasCoordinates({x: event.clientX, y: event.clientY}); }}
+      return wctx.mapViewportToCanvasCoordinates({x: event.clientX, y: event.clientY}); }
+
+   // Checks whether the resize property of the parent element of the canvas element is "both"
+   // and the pointer is in the lower right corner.
+   private isPointerInResizeHandle (event: PointerEvent) : boolean {
+      const wctx = this.wctx;
+      const parentElement = wctx.canvas.parentNode;
+      if (!(parentElement instanceof HTMLElement)) {
+         return false; }
+      if (getComputedStyle(parentElement).resize != "both") {
+         return false; }
+      const rect = parentElement.getBoundingClientRect();
+      const dx = rect.right - event.clientX;
+      const dy = rect.bottom - event.clientY;
+      const handleSize = 18;
+      return dx >= 0 && dx < handleSize && dy >= 0 && dy < handleSize; }}
 
 //--- Keyboard controller ------------------------------------------------------
 
@@ -418,7 +448,7 @@ class KeyboardController {
 
    private wctx:             WidgetContext;
 
-   constructor (wctx: WidgetContext) {
+   public constructor (wctx: WidgetContext) {
       this.wctx = wctx;
       wctx.canvas.addEventListener("keypress", this.keyPressEventListener); }
 
@@ -476,16 +506,18 @@ class WidgetContext {
    public  isConnected:                boolean;
    public  style:                      Style;
    private animationFramePending:      boolean;
+   private resizeObserver:             ResizeObserver;
 
    public  vState:                     InternalViewerState;          // current viewer state
    public  initialVState:              InternalViewerState;          // last set initial viewer state
    public  iState:                     InteractionState;
 
-   constructor (canvas: HTMLCanvasElement) {
+   public constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
       this.eventTarget = new EventTargetPolyfill();
       this.isConnected = false;
       this.animationFramePending = false;
+      this.resizeObserver = new ResizeObserver(this.resizeObserverCallback);
       this.setViewerState(<ViewerState>{});
       this.resetInteractionState(); }
 
@@ -516,16 +548,14 @@ class WidgetContext {
          this.getStyle();
          this.plotter           = new FunctionPlotter(this);
          this.pointerController = new PointerController(this);
-         this.kbController      = new KeyboardController(this); }
+         this.kbController      = new KeyboardController(this);
+         this.resizeObserver.observe(this.canvas, {box: "device-pixel-content-box"}); }
        else {
          this.pointerController.dispose();
-         this.kbController.dispose(); }
+         this.kbController.dispose();
+         this.resizeObserver.unobserve(this.canvas); }
       this.isConnected = connected;
       this.requestRefresh(); }
-
-   public adjustBackingBitmapResolution() {
-      this.canvas.width = this.canvas.clientWidth || 200;
-      this.canvas.height = this.canvas.clientHeight || 200; }
 
    public setViewerState (vState: ViewerState) {
       this.vState = cloneViewerState(vState);
@@ -589,12 +619,10 @@ class WidgetContext {
       const vState = this.vState;
       return xy ? this.canvas.width / (vState.xMax - vState.xMin) : this.canvas.height / (vState.yMax - vState.yMin); }
 
-   public zoom (fx: number, fy?: number, cCenter?: Point) {
+   public zoom (fx: number, fyOpt?: number, cCenterOpt?: Point) {
       const vState = this.vState;
-      if (fy == undefined) {
-         fy = fx; }
-      if (cCenter == undefined) {
-         cCenter = {x: this.canvas.width / 2, y: this.canvas.height / 2}; }
+      const fy = fyOpt ?? fx;
+      const cCenter = cCenterOpt ?? {x: this.canvas.width / 2, y: this.canvas.height / 2};
       const lCenter = this.mapCanvasToLogicalCoordinates(cCenter);
       vState.xMax = vState.xMin + (vState.xMax - vState.xMin) / fx;
       vState.yMax = vState.yMin + (vState.yMax - vState.yMin) / fy;
@@ -625,7 +653,7 @@ class WidgetContext {
       this.animationFramePending = false;
       if (!this.isConnected) {
          return; }
-      this.refresh(); }
+      this.refresh(); };
 
    // Re-paints the canvas and updates the cursor.
    private refresh() {
@@ -641,7 +669,14 @@ class WidgetContext {
       this.eventTarget.dispatchEvent(event); }
 
    public hasFocus() : boolean {
-      return document.activeElement === this.canvas; }}
+      return document.activeElement === this.canvas; }
+
+   private resizeObserverCallback = (entries: ResizeObserverEntry[]) => {
+      const boxes = entries[0].devicePixelContentBoxSize ?? entries[0].contentBoxSize;
+      const box = boxes[0];
+      const width = box.inlineSize;
+      const height = box.blockSize;
+      this.plotter.resize(width, height); }; }
 
 //--- Viewer state -------------------------------------------------------------
 
@@ -724,7 +759,7 @@ export class Widget {
 
    private wctx:             WidgetContext;
 
-   constructor (canvas: HTMLCanvasElement, connected = true) {
+   public constructor (canvas: HTMLCanvasElement, connected = true) {
       this.wctx = new WidgetContext(canvas);
       if (connected) {
          this.setConnected(true); }}
@@ -739,10 +774,7 @@ export class Widget {
    // When the widget is connected, it also adjusts the resolution of the backing bitmap
    // and draws the widget.
    public setConnected (connected: boolean) {
-      const wctx = this.wctx;
-      this.wctx.setConnected(connected);
-      if (connected) {
-         wctx.adjustBackingBitmapResolution(); }}
+      this.wctx.setConnected(connected); }
 
    // Registers an event listener.
    // Currently only the "viewport-change" event is supported.

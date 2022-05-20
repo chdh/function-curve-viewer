@@ -1,6 +1,6 @@
 // Support routines for the function curve viewer.
 
-import {ViewerFunction} from "./FunctionCurveViewer";
+import {ViewerFunction} from "./FunctionCurveViewer.js";
 
 // Creates and returns a viewer function for discrete sampled values.
 // When zoomed in, linear interpolation is used (if `nearestNeighbor == false`).

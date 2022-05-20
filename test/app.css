@@ -5,12 +5,18 @@ body {
 .hidden {
    display: none; }
 
-#functionCurveViewer {
-   display: block;
+#functionCurveViewerFrame {
+   margin-top: 5px;
+   border: 1px solid black;
    width: 800px;
    height: 600px;
-   border: 1px solid black;
-   margin-top: 5px;
+   resize: both;
+   overflow: hidden; }
+
+#functionCurveViewer {
+   display: block;
+   width: 100%;
+   height: 100%;
    outline: none;
    touch-action: none;
    --curve-color: #448844;
@@ -18,9 +24,11 @@ body {
 
 div.buttons {
    color: #07C;
-   cursor: pointer;
    margin-top: 8px;
    font-size: 12px; }
+
+span.button {
+   cursor: pointer; }
 
 #helpText {
    background-color: #FEFAE2;
