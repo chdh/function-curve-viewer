@@ -201,7 +201,9 @@ class FunctionPlotter {
    public paint() {
       const wctx = this.wctx;
       const vState = wctx.vState;
-      if (this.newCanvasWidth && this.newCanvasHeight && (this.newCanvasWidth != wctx.canvas.width || this.newCanvasHeight != wctx.canvas.height)) {
+      if (!this.newCanvasWidth || !this.newCanvasHeight) {
+         return; }
+      if (this.newCanvasWidth != wctx.canvas.width || this.newCanvasHeight != wctx.canvas.height) {
          wctx.canvas.width = this.newCanvasWidth;
          wctx.canvas.height = this.newCanvasHeight; }
       this.clearCanvas();
