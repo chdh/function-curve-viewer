@@ -504,6 +504,7 @@ class WidgetContext {
    public  kbController:               KeyboardController;
 
    public  canvas:                     HTMLCanvasElement;            // the DOM canvas element
+   private canvasStyle:                CSSStyleDeclaration;
    public  eventTarget:                EventTarget;
    public  isConnected:                boolean;
    public  style:                      Style;
@@ -516,6 +517,7 @@ class WidgetContext {
 
    public constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
+      this.canvasStyle = getComputedStyle(canvas);
       this.eventTarget = new EventTargetPolyfill();
       this.isConnected = false;
       this.animationFramePending = false;
@@ -595,14 +597,23 @@ class WidgetContext {
       return {x: this.mapCanvasToLogicalXCoordinate(cPoint.x), y: this.mapCanvasToLogicalYCoordinate(cPoint.y)}; }
 
    public mapViewportToCanvasCoordinates (vPoint: Point) : Point {
+      const canvasStyle = this.canvasStyle;
       const rect = this.canvas.getBoundingClientRect();
-      const x1 = vPoint.x - rect.left - (this.canvas.clientLeft || 0);
-      const y1 = vPoint.y - rect.top  - (this.canvas.clientTop  || 0);
-         // Our canvas element may have a border, but must have no padding.
-         // In the future, the CSSOM View Module can probably be used for proper coordinate mapping.
-      const x = x1 / this.canvas.clientWidth  * this.canvas.width;
-      const y = y1 / this.canvas.clientHeight * this.canvas.height;
-      return {x, y}; }
+      const paddingLeft   = getPx(canvasStyle.paddingLeft);
+      const paddingRight  = getPx(canvasStyle.paddingRight);
+      const paddingTop    = getPx(canvasStyle.paddingTop);
+      const paddingBottom = getPx(canvasStyle.paddingBottom);
+      const borderLeft    = getPx(canvasStyle.borderLeftWidth);
+      const borderTop     = getPx(canvasStyle.borderTopWidth);
+      const width  = this.canvas.clientWidth  - paddingLeft - paddingRight;
+      const height = this.canvas.clientHeight - paddingTop  - paddingBottom;
+      const x1 = vPoint.x - rect.left - borderLeft - paddingLeft;
+      const y1 = vPoint.y - rect.top  - borderTop  - paddingTop;
+      const x = x1 / width  * this.canvas.width;
+      const y = y1 / height * this.canvas.height;
+      return {x, y};
+      function getPx (s: string) : number {
+         return s ? parseFloat(s) : 0; }}                            // ignores the "px" suffix
 
    // Moves the coordinate plane so that `cPoint` (in canvas coordinates) matches
    // `lPoint` (in logical coordinates), while keeping the zoom factors unchanged.
