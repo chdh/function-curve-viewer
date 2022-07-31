@@ -60,7 +60,6 @@ const rules = {
    "@typescript-eslint/prefer-optional-chain": "warn",
    "@typescript-eslint/require-await": "error",                                      "require-await": "off",
    "@typescript-eslint/semi": "error",                                               "semi": "off",
-   "@typescript-eslint/switch-exhaustiveness-check": "error",
 
    // Modifications of default rules:
    "@typescript-eslint/ban-types": ["error", {extendDefaults: true, types: {Function: false}}],

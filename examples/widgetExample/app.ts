@@ -93,7 +93,8 @@ function toggleHelp (show?: boolean) {
 function startup2() {
    canvas = <HTMLCanvasElement>document.getElementById("functionCurveViewer");
    widget = new FunctionCurveViewer.Widget(canvas);
-   widget.addEventListener("viewportchange", () => console.log("Viewportchange event"));
+   widget.addEventListener("viewportchange", () => console.log("viewportchange event"));
+   widget.addEventListener("segmentchange", () => console.log("segmentchange event"));
    document.getElementById("helpButton")!.addEventListener("click", () => toggleHelp());
    document.getElementById("loadFunctionExprButton")!.addEventListener("click", loadFunctionExprButtonClick);
    document.getElementById("loadLocalAudioFileButton")!.addEventListener("click", loadLocalAudioFileButtonClick);

@@ -64,6 +64,9 @@ function startup() {
    widget = new FunctionCurveViewer.Widget(canvas);
    widget.setViewerState(initialViewerState);
    widget.addEventListener("viewportchange", () => console.log("Viewportchange event"));
+   widget.addEventListener("segmentchange",  () => {
+      const vs = widget.getViewerState();
+      console.log(`segmentchange event:  segmentSelected=${vs.segmentSelected}, segmentStart=${vs.segmentStart}, segmentEnd=${vs.segmentEnd}`); });
    document.getElementById("helpButton")!.addEventListener("click", toggleHelp); }
 
 document.addEventListener("DOMContentLoaded", startup);

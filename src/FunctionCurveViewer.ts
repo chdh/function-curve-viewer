@@ -1,4 +1,4 @@
-import EventTargetPolyfill from "./EventTargetPolyfill.js";
+import {nextTick} from "./Utils.js";
 
 //--- Point and PointUtils -----------------------------------------------------
 
@@ -44,6 +44,33 @@ class FunctionPlotter {
       const height = wctx.canvas.height;
       ctx.fillStyle = wctx.style.backgroundColor;
       ctx.fillRect(0, 0, width, height);
+      ctx.restore(); }
+
+   private drawSelectedSegmentBackground() {
+      const wctx = this.wctx;
+      const ctx = this.ctx;
+      const canvasWidth  = wctx.canvas.width;
+      const canvasHeight = wctx.canvas.height;
+      let segmentStart: number;
+      let segmentEnd: number;
+      if (wctx.iState.interactionOperation == InteractionOperation.segmentSelecting) {
+         segmentStart = wctx.iState.segmentStart;
+         segmentEnd   = wctx.iState.segmentEnd; }
+       else if (wctx.vState.segmentSelected) {
+         segmentStart = wctx.vState.segmentStart;
+         segmentEnd   = wctx.vState.segmentEnd; }
+       else {
+         return; }
+      const xStart = Math.round(wctx.mapLogicalToCanvasXCoordinate(segmentStart));
+      const xEnd   = Math.round(wctx.mapLogicalToCanvasXCoordinate(segmentEnd));
+      const x1 = Math.max(0, Math.min(xStart, xEnd));
+      const x2 = Math.min(canvasWidth, Math.max(xStart, xEnd));
+      if (x2 < 0 || x1 >= canvasWidth) {
+         return; }
+      const w = Math.max(1, x2 - x1);
+      ctx.save();
+      ctx.fillStyle = wctx.style.selectionColor;
+      ctx.fillRect(x1, 0, w, canvasHeight);
       ctx.restore(); }
 
    private formatLabel (value: number, decPow: number, xy: boolean) {
@@ -207,6 +234,7 @@ class FunctionPlotter {
          wctx.canvas.width = this.newCanvasWidth;
          wctx.canvas.height = this.newCanvasHeight; }
       this.clearCanvas();
+      this.drawSelectedSegmentBackground();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
       if (wctx.vState.viewerFunction) {
@@ -243,8 +271,7 @@ class PointerController {
 
    private wctx:             WidgetContext;
    private pointers:         Map<number,PointerEvent>;     // maps IDs of active pointers to last pointer events
-   private dragStartPos:     Point | undefined;            // logical coordinates of starting point of drag action
-   private zooming:          boolean = false;
+   private dragStartPos:     Point;                        // logical coordinates of starting point of drag action
    private zoomLCenter:      Point;                        // zoom center point in logical coordinates
    private zoomStartDist:    number;
    private zoomStartFactorX: number;
@@ -271,39 +298,63 @@ class PointerController {
       this.releaseAllPointers(); }
 
    private pointerDownEventListener = (event: PointerEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || (event.pointerType == "mouse" && event.button != 0)) {
+      if (event.altKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       if (this.isPointerInResizeHandle(event)) {
          return; }
+      event.preventDefault();
       this.trackPointer(event);
-      this.switchMode();
-      event.preventDefault(); };
+      this.startInteractionOperation(event.shiftKey, event.ctrlKey); };
 
    private pointerUpEventListener = (event: PointerEvent) => {
-      this.releasePointer(event.pointerId);
-      this.switchMode();
-      event.preventDefault(); };
-
-   private switchMode() {
       const wctx = this.wctx;
-      this.stopPlaneDragging();
-      this.stopZooming();
-      if (this.pointers.size == 1) {                       // left click or single touch
-         this.startPlaneDragging();
-         wctx.canvas.focus(); }
-       else if (this.pointers.size == 2) {                 // zoom gesture
-         this.startZooming(); }}
+      if (!this.pointers.has(event.pointerId)) {
+         return; }
+      event.preventDefault();
+      this.completeInteractionOperation();
+      this.releasePointer(event.pointerId);
+      wctx.resetInteractionState();
+      wctx.requestRefresh(); };
+
+   private startInteractionOperation (shiftKey: boolean, ctrlKey: boolean) {
+      const wctx = this.wctx;
+      wctx.resetInteractionState();
+      wctx.requestRefresh();
+      switch (this.pointers.size) {
+         case 1: {                                         // left click or single touch
+            wctx.canvas.focus();
+            if (shiftKey || ctrlKey) {
+               this.startSegmentSelecting(ctrlKey); }
+             else {
+               this.startPlaneDragging(); }
+            break; }
+         case 2: {                                         // zoom gesture
+            if (!shiftKey && !ctrlKey) {
+               this.startZooming(); }}}}
+
+   private completeInteractionOperation() {
+      const wctx = this.wctx;
+      switch (wctx.iState.interactionOperation) {
+         case InteractionOperation.segmentSelecting: {
+            this.completeSegmentSelecting();
+            break; }}}
 
    private pointerMoveEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
       if (!this.pointers.has(event.pointerId)) {
          return; }
+      event.preventDefault();
       this.trackPointer(event);
-      if (this.pointers.size == 1 && wctx.iState.planeDragging) {
-         this.dragPlane(); }
-       else if (this.pointers.size == 2 && this.zooming) {
-         this.zoom(); }
-      event.preventDefault(); };
+      switch (wctx.iState.interactionOperation) {
+         case InteractionOperation.planeDragging: {
+            this.dragPlane();
+            break; }
+         case InteractionOperation.zooming: {
+            this.zoom();
+            break; }
+         case InteractionOperation.segmentSelecting: {
+            this.selectSegment();
+            break; }}};
 
    private trackPointer (event: PointerEvent) {
       const wctx = this.wctx;
@@ -324,24 +375,16 @@ class PointerController {
 
    private startPlaneDragging() {
       const wctx = this.wctx;
-      const cPoint = this.getCanvasCoordinates();
-      const lPoint = wctx.mapCanvasToLogicalCoordinates(cPoint);
-      wctx.iState.planeDragging = true;
+      const lPoint = this.getPointerLogicalCoordinates();
       this.dragStartPos = lPoint;
+      wctx.iState.interactionOperation = InteractionOperation.planeDragging;
       wctx.requestRefresh(); }
 
-   private stopPlaneDragging() {
+   private dragPlane() {
       const wctx = this.wctx;
-      if (wctx.iState.planeDragging) {
-         wctx.requestRefresh(); }
-      wctx.iState.planeDragging = false;
-      this.dragStartPos = undefined; }
-
-   public dragPlane() {
-      const wctx = this.wctx;
-      if (!this.dragStartPos) {
+      if (this.pointers.size != 1) {
          return; }
-      const cPoint = this.getCanvasCoordinates();
+      const cPoint = this.getPointerCanvasCoordinates();
       wctx.moveCoordinatePlane(cPoint, this.dragStartPos);
       wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); }
@@ -363,14 +406,13 @@ class PointerController {
       const t = Math.tan(Math.PI / 8);
       this.zoomX = xDist > t * yDist;
       this.zoomY = yDist > t * xDist;
-      this.zooming = true; }
-
-   private stopZooming() {
-      this.zooming = false; }
+      wctx.iState.interactionOperation = InteractionOperation.zooming; }
 
    private zoom() {
       const wctx = this.wctx;
       const vState = wctx.vState;
+      if (this.pointers.size != 2) {
+         return; }
       const pointerValues = this.pointers.values();
       const event1 = pointerValues.next().value;
       const event2 = pointerValues.next().value;
@@ -391,6 +433,7 @@ class PointerController {
       const wctx = this.wctx;
       if (wctx.vState.focusShield && !wctx.hasFocus()) {
          return; }
+      event.preventDefault();
       const cPoint = this.getCanvasCoordinatesFromEvent(event);
       if (event.deltaY == 0) {
          return; }
@@ -415,15 +458,51 @@ class PointerController {
             fx = f; fy = f; }}
       wctx.zoom(fx, fy, cPoint);
       wctx.requestRefresh();
-      wctx.fireViewportChangeEvent();
-      event.preventDefault(); };
+      wctx.fireViewportChangeEvent(); };
 
-   // Returns the coordinates of the first pointer.
-   private getCanvasCoordinates() : Point {
+   private startSegmentSelecting (ctrlKey: boolean) {
+      const wctx = this.wctx;
+      const iState = wctx.iState;
+      const x = this.getPointerLogicalCoordinates().x;
+      if (ctrlKey) {
+         if (Math.abs(x - iState.segmentStart) < Math.abs(x - iState.segmentEnd)) {
+            iState.segmentStart = iState.segmentEnd; }}
+       else {
+         iState.segmentStart = x; }
+      iState.segmentEnd = x;
+      iState.interactionOperation = InteractionOperation.segmentSelecting;
+      wctx.requestRefresh(); }
+
+   private selectSegment() {
+      const wctx = this.wctx;
+      if (this.pointers.size != 1) {
+         return; }
+      wctx.iState.segmentEnd = this.getPointerLogicalCoordinates().x;
+      wctx.requestRefresh(); }
+
+   private completeSegmentSelecting() {
+      const wctx = this.wctx;
+      const x1 = Math.min(wctx.iState.segmentStart, wctx.iState.segmentEnd);
+      const x2 = Math.max(wctx.iState.segmentStart, wctx.iState.segmentEnd);
+      wctx.vState.segmentStart = x1;
+      wctx.vState.segmentEnd = x2;
+      wctx.vState.segmentSelected = x2 > x1;
+      wctx.fireEvent("segmentchange");
+      wctx.requestRefresh(); }
+
+   // Returns the canvas coordinates of the first pointer.
+   private getPointerCanvasCoordinates() : Point {
       if (this.pointers.size < 1) {
          throw new Error("No active pointers."); }
       const event = this.pointers.values().next().value;
       return this.getCanvasCoordinatesFromEvent(event); }
+
+   // Returns the logical coordinates of the first pointer.
+   private getPointerLogicalCoordinates() : Point {
+      const wctx = this.wctx;
+      const cPoint = this.getPointerCanvasCoordinates();
+      const lPoint = wctx.mapCanvasToLogicalCoordinates(cPoint);
+      return lPoint; }
 
    private getCanvasCoordinatesFromEvent (event: MouseEvent) : Point {
       const wctx = this.wctx;
@@ -486,11 +565,21 @@ class KeyboardController {
 
 //--- Internal widget context --------------------------------------------------
 
+const enum InteractionOperation {
+   none,
+   planeDragging,                                                    // coordinate plane is beeing dragged
+   zooming,                                                          // zooming in/out
+   segmentSelecting }                                                // x-axis segment is beeing selected
+
 interface InteractionState {
-   planeDragging:                      boolean; }                    // true if the coordinate plane is beeing dragged
+   interactionOperation:               InteractionOperation;
+   // Values for InteractionOperation = segmentSelecting:
+   segmentStart:                       number;
+   segmentEnd:                         number; }
 
 interface Style {
    backgroundColor:                    string;
+   selectionColor:                     string;
    labelTextColor:                     string;
    gridColor0:                         string;
    gridColor10:                        string;
@@ -511,24 +600,25 @@ class WidgetContext {
    private animationFramePending:      boolean;
    private resizeObserver:             ResizeObserver;
 
-   public  vState:                     InternalViewerState;          // current viewer state
-   public  initialVState:              InternalViewerState;          // last set initial viewer state
+   public  vState:                     FullViewerState;              // current viewer state
+   public  initialVState:              FullViewerState;              // last set initial viewer state
    public  iState:                     InteractionState;
 
    public constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
       this.canvasStyle = getComputedStyle(canvas);
-      this.eventTarget = new EventTargetPolyfill();
+      this.eventTarget = new EventTarget();
       this.isConnected = false;
       this.animationFramePending = false;
       this.resizeObserver = new ResizeObserver(this.resizeObserverCallback);
       this.setViewerState(<ViewerState>{});
-      this.resetInteractionState(); }
+      this.iState = {interactionOperation: InteractionOperation.none, segmentStart: 0, segmentEnd: 0}; }
 
    private getStyle() {
       const cs = getComputedStyle(this.canvas);
       const style = <Style>{};
       style.backgroundColor = cs.getPropertyValue("--background-color") || "#FFFFFF";
+      style.selectionColor  = cs.getPropertyValue("--selection-color")  || "#F7F7F7";
       style.labelTextColor  = cs.getPropertyValue("--label-text-color") || "#707070";
       style.gridColor0      = cs.getPropertyValue("--grid-color-0")     || "#989898";
       style.gridColor10     = cs.getPropertyValue("--grid-color-10")    || "#D4D4D4";
@@ -569,9 +659,8 @@ class WidgetContext {
    public getViewerState() : ViewerState {
       return cloneViewerState(this.vState); }
 
-   private resetInteractionState() {
-      this.iState = {
-         planeDragging:    false}; }
+   public resetInteractionState() {
+      this.iState.interactionOperation = InteractionOperation.none; }
 
    // Resets the context to the initial state.
    public reset() {
@@ -674,12 +763,20 @@ class WidgetContext {
       this.updateCanvasCursorStyle(); }
 
    private updateCanvasCursorStyle() {
-      const style = this.iState.planeDragging ? "move" : "auto";
+      let style: string;
+      switch (this.iState.interactionOperation) {
+         case InteractionOperation.planeDragging:    style = "move";       break;
+         case InteractionOperation.segmentSelecting: style = "col-resize"; break;
+         default:                                    style = "auto"; }
       this.canvas.style.cursor = style; }
 
    public fireViewportChangeEvent() {
-      const event = new CustomEvent("viewportchange");
-      this.eventTarget.dispatchEvent(event); }
+      this.fireEvent("viewportchange"); }
+
+   public fireEvent (eventName: string) {
+      const event = new CustomEvent(eventName);
+      nextTick(() => {                                     // call event listeners asynchronously
+         this.eventTarget.dispatchEvent(event); }); }
 
    public hasFocus() : boolean {
       return document.activeElement === this.canvas; }
@@ -713,43 +810,43 @@ export type ViewerFunction = (x: number, sampleWidth: number, channel: number) =
 export const enum ZoomMode {x, y, xy}
 
 // Function curve viewer state.
-export interface ViewerState {
+interface FullViewerState {
    viewerFunction?:          ViewerFunction;               // the function to be plotted in this viewer
-   channels?:                number;                       // number of channels to plot (number of graphs)
-   xMin:                     number;                       // minimum x coordinate of the function graph area
-   xMax:                     number;                       // maximum x coordinate of the function graph area
-   yMin:                     number;                       // minimum y coordinate of the function graph area
-   yMax:                     number;                       // maximum y coordinate of the function graph area
-   gridEnabled?:             boolean;                      // true to draw a coordinate grid
+   channels:                 number;                       // number of channels to plot (number of graphs)
+   xMin:                     number;                       // minimum x coordinate of the function graph area (viewport)
+   xMax:                     number;                       // maximum x coordinate of the function graph area (viewport)
+   yMin:                     number;                       // minimum y coordinate of the function graph area (viewport)
+   yMax:                     number;                       // maximum y coordinate of the function graph area (viewport)
+   gridEnabled:              boolean;                      // true to draw a coordinate grid
    xAxisUnit?:               string;                       // unit to be appended to x-axis labels
    yAxisUnit?:               string;                       // unit to be appended to y-axis labels
-   primaryZoomMode?:         ZoomMode;                     // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
-   focusShield?:             boolean;                      // true to ignore mouse wheel events without focus
-   customPaintFunction?:     CustomPaintFunction; }        // custom paint function
+   primaryZoomMode:          ZoomMode;                     // zoom mode to be used for mouse wheel when no shift/alt/ctrl-Key is pressed
+   focusShield:              boolean;                      // true to ignore mouse wheel events without focus
+   customPaintFunction?:     CustomPaintFunction;          // custom paint function
+   segmentSelected:          boolean;                      // =true if an x-axis segment is selected
+   segmentStart:             number;                       // x value of start of x-axis segment, only relevant if segmentSelected is true
+   segmentEnd:               number; }                     // x value of end of x-axis segment, only relevant if segmentSelected is true
 
-interface InternalViewerState extends ViewerState {        // used to override optional fields to non-optional
-   channels:                 number;
-   gridEnabled:              boolean;
-   primaryZoomMode:          ZoomMode; }
+export type ViewerState = Partial<FullViewerState>;
 
 // Clones and adds missing fields.
-function cloneViewerState (vState: ViewerState) : InternalViewerState {
-   const vState2 = <InternalViewerState>{};
-   vState2.viewerFunction      = vState.viewerFunction;
-   vState2.channels            = get(vState.channels, 1)!;
-   vState2.xMin                = get(vState.xMin, 0);
-   vState2.xMax                = get(vState.xMax, 1);
-   vState2.yMin                = get(vState.yMin, 0);
-   vState2.yMax                = get(vState.yMax, 1);
-   vState2.xAxisUnit           = vState.xAxisUnit;
-   vState2.yAxisUnit           = vState.yAxisUnit;
-   vState2.gridEnabled         = get(vState.gridEnabled, true)!;
-   vState2.primaryZoomMode     = get(vState.primaryZoomMode, ZoomMode.xy)!;
-   vState2.focusShield         = get(vState.focusShield, false)!;
-   vState2.customPaintFunction = vState.customPaintFunction;
-   return vState2;
-   function get<T> (value: T, defaultValue: T) : T {
-      return (value === undefined) ? defaultValue : value; }}
+function cloneViewerState (vState: ViewerState) : FullViewerState {
+   return {
+      viewerFunction:        vState.viewerFunction,
+      channels:              vState.channels ?? 1,
+      xMin:                  vState.xMin ?? 0,
+      xMax:                  vState.xMax ?? 1,
+      yMin:                  vState.yMin ?? 0,
+      yMax:                  vState.yMax ?? 1,
+      gridEnabled:           vState.gridEnabled ?? true,
+      xAxisUnit:             vState.xAxisUnit,
+      yAxisUnit:             vState.yAxisUnit,
+      primaryZoomMode:       vState.primaryZoomMode ?? ZoomMode.xy,
+      focusShield:           vState.focusShield ?? false,
+      customPaintFunction:   vState.customPaintFunction,
+      segmentSelected:       vState.segmentSelected ?? false,
+      segmentStart:          vState.segmentStart ?? 0,
+      segmentEnd:            vState.segmentEnd ?? 0 }; }
 
 //--- Custom paint function ----------------------------------------------------
 
@@ -789,9 +886,12 @@ export class Widget {
       this.wctx.setConnected(connected); }
 
    // Registers an event listener.
-   // Currently only the "viewport-change" event is supported.
-   // The "viewportchange" event is fired after the user has changed the viewport of the widget
-   // e.g. by zooming oder moving the plane.
+   // Supported events:
+   //    viewportchange:
+   //      Fired after the user has changed the viewport of the widget e.g. by zooming
+   //      oder moving the plane.
+   //    segmentchange:
+   //      Fired after the user has changed the x-axis segment selection.
    public addEventListener (type: string, listener: EventListener) {
       this.wctx.eventTarget.addEventListener(type, listener); }
 
@@ -814,6 +914,9 @@ export class Widget {
       const primaryZoomAxis = (pz == ZoomMode.x) ? "x-axis" : (pz == ZoomMode.y) ? "y-axis" : "both axes";
       return [
          "drag plane with mouse or touch", "move the coordinate space",
+         "shift + drag",                   "select x-axis segment",
+         "shift + click",                  "clear x-asis segment,<br> set edge for ctrl+click/drag",
+         "ctrl + click<br>ctrl + drag",    "modify x-asis segment",
          "mouse wheel",                    "zoom " + primaryZoomAxis,
          "shift + mouse wheel",            "zoom y-axis",
          "ctrl + mouse wheel",             "zoom both axes",
