@@ -25,8 +25,14 @@ export class FunctionCurveViewerElement extends HTMLElement {
       return this.widget.getViewerState(); }
 
    // Updates the current state of the function curve viewer.
-   public setViewerState (vState: ViewerState) {
+   public setViewerState (vState: Partial<ViewerState>) {
       this.widget.setViewerState(vState); }
+
+   public get disabled() : boolean {
+      return this.widget.disabled; }
+
+   public set disabled (disabled: boolean) {
+      this.widget.disabled = disabled; }
 
    // Returns the help text as an array.
    public getRawHelpText() : string[] {

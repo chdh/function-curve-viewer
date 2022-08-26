@@ -1,6 +1,6 @@
 import * as FunctionCurveViewer from "function-curve-viewer";
 
-const initialViewerState = <FunctionCurveViewer.ViewerState>{
+const initialViewerState = <Partial<FunctionCurveViewer.ViewerState>>{
    viewerFunction: (x: number, _sampleWidth: number) => Math.sin(x) / x,
    xMin:           -20,
    xMax:           20,

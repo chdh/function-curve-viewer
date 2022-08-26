@@ -29,7 +29,7 @@ async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
       audioContext = new ((<any>window).AudioContext || (<any>window).webkitAudioContext)(); }
    const audioBuffer = await audioContext.decodeAudioData(fileData);
    const samples = new Float64Array(audioBuffer.getChannelData(0)); // only the first channel is used
-   const viewerFunction = FunctionCurveViewer.createViewerFunctionForFloat64Array(samples, audioBuffer.sampleRate);
+   const viewerFunction = FunctionCurveViewer.createViewerFunctionForArray(samples, {scalingFactor: audioBuffer.sampleRate});
    const viewerState = <FunctionCurveViewer.ViewerState>{
       viewerFunction:  viewerFunction,
       xMin:            0,

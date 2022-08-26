@@ -29,10 +29,11 @@ span.button {
    padding: 3px;
    margin-top: 8px;
    margin-bottom: 20px;
-   width: 550px; }
+   width: 450px; }
 
 table.functionCurveViewerHelp {
-   border-collapse: collapse; }
+   border-collapse: collapse;
+   width: 100%; }
 
 table.functionCurveViewerHelp td {
    padding: 3px;

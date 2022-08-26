@@ -42,7 +42,7 @@ class FunctionPlotter {
       ctx.save();
       const width  = wctx.canvas.width;
       const height = wctx.canvas.height;
-      ctx.fillStyle = wctx.style.backgroundColor;
+      ctx.fillStyle = wctx.disabled ? wctx.style.disabledBackgroundColor : wctx.style.backgroundColor;
       ctx.fillRect(0, 0, width, height);
       ctx.restore(); }
 
@@ -142,9 +142,12 @@ class FunctionPlotter {
       const canvasHeight = wctx.canvas.height;
       const sampleWidth = (wctx.vState.xMax - wctx.vState.xMin) / wctx.canvas.width;
       const pixelCompensation = 0.41;
+      const lineWidth = wctx.style.curveWidths[channel] || 1;
+      const lineWidthInt = Math.max(1, Math.round(lineWidth));
       ctx.save();
       ctx.fillStyle = wctx.style.curveColors[channel] || "#666666";
       ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = lineWidth;
       let prevCyLo: number|undefined = undefined;
       let prevCyHi: number|undefined = undefined;
       let pixelAcc = 0;
@@ -197,7 +200,8 @@ class FunctionPlotter {
                   if (pixelAcc >= cyLo0 - cyLo1) {
                      cyHi++;
                      pixelAcc--; }}
-               ctx.fillRect(cx, cyLo, 1, cyHi - cyLo);
+               const fillHeight = Math.max(lineWidthInt, cyHi - cyLo);
+               ctx.fillRect(cx, cyLo, 1, fillHeight);
                prevCyLo = cyLo;
                prevCyHi = cyHi;
                break; }}}
@@ -234,6 +238,8 @@ class FunctionPlotter {
          wctx.canvas.width = this.newCanvasWidth;
          wctx.canvas.height = this.newCanvasHeight; }
       this.clearCanvas();
+      if (wctx.disabled) {
+         return; }
       this.drawSelectedSegmentBackground();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
@@ -298,11 +304,14 @@ class PointerController {
       this.releaseAllPointers(); }
 
    private pointerDownEventListener = (event: PointerEvent) => {
+      const wctx = this.wctx;
       if (event.altKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       if (this.isPointerInResizeHandle(event)) {
          return; }
       event.preventDefault();
+      if (wctx.disabled) {
+         return; }
       this.trackPointer(event);
       this.startInteractionOperation(event.shiftKey, event.ctrlKey); };
 
@@ -334,6 +343,8 @@ class PointerController {
 
    private completeInteractionOperation() {
       const wctx = this.wctx;
+      if (wctx.disabled) {
+         return; }
       switch (wctx.iState.interactionOperation) {
          case InteractionOperation.segmentSelecting: {
             this.completeSegmentSelecting();
@@ -345,6 +356,8 @@ class PointerController {
          return; }
       event.preventDefault();
       this.trackPointer(event);
+      if (wctx.disabled) {
+         return; }
       switch (wctx.iState.interactionOperation) {
          case InteractionOperation.planeDragging: {
             this.dragPlane();
@@ -431,6 +444,8 @@ class PointerController {
 
    private wheelEventListener = (event: WheelEvent) => {
       const wctx = this.wctx;
+      if (wctx.disabled) {
+         return; }
       if (wctx.vState.focusShield && !wctx.hasFocus()) {
          return; }
       event.preventDefault();
@@ -543,6 +558,8 @@ class KeyboardController {
 
    private processKeyPress (key: string) {
       const wctx = this.wctx;
+      if (wctx.disabled) {
+         return false; }
       switch (key) {
          case "+": case "-": case "x": case "X": case "y": case "Y": {
             const fx = (key == '+' || key == 'X') ? Math.SQRT2 : (key == '-' || key == 'x') ? Math.SQRT1_2 : 1;
@@ -579,12 +596,14 @@ interface InteractionState {
 
 interface Style {
    backgroundColor:                    string;
+   disabledBackgroundColor:            string;
    selectionColor:                     string;
    labelTextColor:                     string;
    gridColor0:                         string;
    gridColor10:                        string;
    gridColor:                          string;
-   curveColors:                        string[]; }
+   curveColors:                        string[];
+   curveWidths:                        number[]; }                   // curve line widths
 
 class WidgetContext {
 
@@ -600,34 +619,43 @@ class WidgetContext {
    private animationFramePending:      boolean;
    private resizeObserver:             ResizeObserver;
 
-   public  vState:                     FullViewerState;              // current viewer state
-   public  initialVState:              FullViewerState;              // last set initial viewer state
+   public  vState:                     ViewerState;                  // current viewer state
+   public  initialVState:              ViewerState;                  // last set initial viewer state
    public  iState:                     InteractionState;
+   public  disabled:                   boolean;                      // internal "disabled" flag
+   public  disabledProperty:           boolean;                      // external "disabled" property
 
    public constructor (canvas: HTMLCanvasElement) {
       this.canvas = canvas;
       this.canvasStyle = getComputedStyle(canvas);
       this.eventTarget = new EventTarget();
       this.isConnected = false;
+      this.disabled = true;
+      this.disabledProperty = false;
       this.animationFramePending = false;
       this.resizeObserver = new ResizeObserver(this.resizeObserverCallback);
-      this.setViewerState(<ViewerState>{});
+      this.setViewerState({});
       this.iState = {interactionOperation: InteractionOperation.none, segmentStart: 0, segmentEnd: 0}; }
 
    private getStyle() {
       const cs = getComputedStyle(this.canvas);
       const style = <Style>{};
-      style.backgroundColor = cs.getPropertyValue("--background-color") || "#FFFFFF";
-      style.selectionColor  = cs.getPropertyValue("--selection-color")  || "#F7F7F7";
-      style.labelTextColor  = cs.getPropertyValue("--label-text-color") || "#707070";
-      style.gridColor0      = cs.getPropertyValue("--grid-color-0")     || "#989898";
-      style.gridColor10     = cs.getPropertyValue("--grid-color-10")    || "#D4D4D4";
-      style.gridColor       = cs.getPropertyValue("--grid-color")       || "#EEEEEE";
+      style.backgroundColor         = cs.getPropertyValue("--background-color")          || "#FFFFFF";
+      style.disabledBackgroundColor = cs.getPropertyValue("--disabled-background-color") || "#F9F9F9";
+      style.selectionColor          = cs.getPropertyValue("--selection-color")           || "#F2F2F2";
+      style.labelTextColor          = cs.getPropertyValue("--label-text-color")          || "#707070";
+      style.gridColor0              = cs.getPropertyValue("--grid-color-0")              || "rgba(0, 0, 0, 0.404)";
+      style.gridColor10             = cs.getPropertyValue("--grid-color-10")             || "rgba(0, 0, 0, 0.169)";
+      style.gridColor               = cs.getPropertyValue("--grid-color")                || "rgba(0, 0, 0, 0.067)";
       const maxChannels = 100;
       style.curveColors = Array(maxChannels);
       style.curveColors[0] = cs.getPropertyValue("--curve-color0") || cs.getPropertyValue("--curve-color") || this.generateCurveColor(0);
       for (let channel = 1; channel < maxChannels; channel++) {
          style.curveColors[channel] = cs.getPropertyValue("--curve-color" + channel) || this.generateCurveColor(channel); }
+      style.curveWidths = Array(maxChannels);
+      style.curveWidths[0] = parseFloat(cs.getPropertyValue("--curve-width0")) || parseFloat(cs.getPropertyValue("--curve-width")) || 1;
+      for (let channel = 1; channel < maxChannels; channel++) {
+         style.curveWidths[channel] = parseFloat(cs.getPropertyValue("--curve-width" + channel)) || 1; }
       this.style = style; }
 
    private generateCurveColor (i: number) : string {
@@ -651,10 +679,17 @@ class WidgetContext {
       this.isConnected = connected;
       this.requestRefresh(); }
 
-   public setViewerState (vState: ViewerState) {
+   public setViewerState (vState: Partial<ViewerState>) {
       this.vState = cloneViewerState(vState);
       this.initialVState = cloneViewerState(vState);
+      this.updateDisabledFlag();
       this.requestRefresh(); }
+
+   public updateDisabledFlag() {
+      const oldDisabled = this.disabled;
+      this.disabled = this.disabledProperty || (!this.vState.viewerFunction && !this.vState.customPaintFunction);
+      if (this.disabled != oldDisabled) {
+         this.requestRefresh(); }}
 
    public getViewerState() : ViewerState {
       return cloneViewerState(this.vState); }
@@ -810,7 +845,7 @@ export type ViewerFunction = (x: number, sampleWidth: number, channel: number) =
 export const enum ZoomMode {x, y, xy}
 
 // Function curve viewer state.
-interface FullViewerState {
+export interface ViewerState {
    viewerFunction?:          ViewerFunction;               // the function to be plotted in this viewer
    channels:                 number;                       // number of channels to plot (number of graphs)
    xMin:                     number;                       // minimum x coordinate of the function graph area (viewport)
@@ -827,10 +862,8 @@ interface FullViewerState {
    segmentStart:             number;                       // x value of start of x-axis segment, only relevant if segmentSelected is true
    segmentEnd:               number; }                     // x value of end of x-axis segment, only relevant if segmentSelected is true
 
-export type ViewerState = Partial<FullViewerState>;
-
 // Clones and adds missing fields.
-function cloneViewerState (vState: ViewerState) : FullViewerState {
+function cloneViewerState (vState: Partial<ViewerState>) : ViewerState {
    return {
       viewerFunction:        vState.viewerFunction,
       channels:              vState.channels ?? 1,
@@ -904,9 +937,16 @@ export class Widget {
       return this.wctx.getViewerState(); }
 
    // Updates the current state of the function curve viewer.
-   public setViewerState (vState: ViewerState) {
+   public setViewerState (vState: Partial<ViewerState>) {
       const wctx = this.wctx;
       wctx.setViewerState(vState); }
+
+   public get disabled() : boolean {
+      return this.wctx.disabledProperty; }
+
+   public set disabled (disabled: boolean) {
+      this.wctx.disabledProperty = disabled;
+      this.wctx.updateDisabledFlag(); }
 
    // Returns the help text as an array.
    public getRawHelpText() : string[] {

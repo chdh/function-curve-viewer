@@ -2,11 +2,20 @@
 
 import {ViewerFunction} from "./FunctionCurveViewer.js";
 
+export interface CreateViewerFunctionForArrayOptions {
+   scalingFactor?:           number;                       // usually the sample rate
+   offset?:                  number;
+   nearestNeighbor?:         boolean;                      // true = use neares neighbour interpolation when zommed in, false = use linear interpolation
+   average?:                 boolean; }                    // true = use average when zommed out, true = use range
+
 // Creates and returns a viewer function for discrete sampled values.
-// When zoomed in, linear interpolation is used (if `nearestNeighbor == false`).
-// When zommed out, min/max values of the corresponding x value range are used to display the envelope of the curve.
-// The parameter scalingFactor is usually the sample rate.
-export function createViewerFunctionForFloat64Array (samples: Float64Array, scalingFactor: number, offset = 0, nearestNeighbor = false) : ViewerFunction {
+// When zoomed in, linear interpolation or nearest neighbour interpolation is used (depending on options.nearestNeighbor).
+// When zommed out, the min/max values of the corresponding x value range are used to display the envelope of the curve.
+export function createViewerFunctionForArray (samples: ArrayLike<number>, options: CreateViewerFunctionForArrayOptions) : ViewerFunction {
+   const scalingFactor   = options.scalingFactor   ?? 1;
+   const offset          = options.offset          ?? 0;
+   const nearestNeighbor = options.nearestNeighbor ?? false;
+   const average         = options.average         ?? false;
    return function (x: number, sampleWidth: number) : number | number[] | undefined {
       const pos = x * scalingFactor + offset;
       const width = sampleWidth * scalingFactor;
@@ -16,16 +25,23 @@ export function createViewerFunctionForFloat64Array (samples: Float64Array, scal
           else {
             return interpolateLinear(samples, pos); }}
        else {
-         return findValueRange(samples, pos - width / 2, pos + width / 2); }}; }
+         if (average) {
+            return computeAverageOfRange(samples, pos - width / 2, pos + width / 2); }
+          else {
+            return findValueRange(samples, pos - width / 2, pos + width / 2); }}}; }
 
-function interpolateNearestNeighbor (samples: Float64Array, pos: number) : number | undefined {
+// This function is only defined for backward compatibility with FunctionCurveViewer versions <= 1.0.25.
+export function createViewerFunctionForFloat64Array (samples: ArrayLike<number>, scalingFactor: number, offset = 0, nearestNeighbor = false) : ViewerFunction {
+   return createViewerFunctionForArray(samples, {scalingFactor, offset, nearestNeighbor }); }
+
+function interpolateNearestNeighbor (samples: ArrayLike<number>, pos: number) : number | undefined {
    const p = Math.round(pos);
    return (p >= 0 && p < samples.length) ? samples[p] : undefined; }
 
-function interpolateLinear (samples: Float64Array, pos: number) : number | undefined {
+function interpolateLinear (samples: ArrayLike<number>, pos: number) : number | undefined {
    const p1 = Math.floor(pos);
    const p2 = Math.ceil(pos);
-   if (p1 < 0 || p2 > samples.length) {
+   if (p1 < 0 || p2 >= samples.length) {
       return undefined; }
    if (p1 == p2) {
       return samples[p1]; }
@@ -34,10 +50,10 @@ function interpolateLinear (samples: Float64Array, pos: number) : number | undef
    return v1 + (pos - p1) * (v2 - v1); }
 
 // Returns the minimum and maximum sample values within the range from pos1 (inclusive) to pos2 (exclusive).
-function findValueRange (samples: Float64Array, pos1: number, pos2: number) : number[] | undefined {
+function findValueRange (samples: ArrayLike<number>, pos1: number, pos2: number) : number[] | undefined {
    const p1 = Math.max(0, Math.ceil(pos1));
-   const p2 = Math.min(samples.length + 1, Math.ceil(pos2));
-   if (p1 > p2) {
+   const p2 = Math.min(samples.length, Math.ceil(pos2));
+   if (p1 >= p2) {
       return undefined; }
    let vMin = samples[p1];
    let vMax = vMin;
@@ -46,6 +62,23 @@ function findValueRange (samples: Float64Array, pos1: number, pos2: number) : nu
       vMin = Math.min(v, vMin);
       vMax = Math.max(v, vMax); }
    return [vMin, vMax]; }
+
+// Returns the average of the sample values within the range from pos1 to pos2. pos1 and pos2 are float values.
+function computeAverageOfRange (samples: ArrayLike<number>, pos1: number, pos2: number) : number | undefined {
+   const p1 = Math.max(-0.5, pos1);
+   const p2 = Math.min(samples.length - 0.50000001, pos2);
+   if (p1 >= p2) {
+      return undefined; }
+   const p1i = Math.round(p1);
+   const p2i = Math.round(p2);
+   if (p1i >= p2i) {
+      return samples[p1i]; }
+   let sum = 0;
+   sum += samples[p1i] * (p1i + 0.5 - p1);
+   for (let i = p1i + 1; i < p2i; i++) {
+      sum += samples[i]; }
+   sum += samples[p2i] * (p2 - (p2i - 0.5));
+   return sum / (p2 - p1); }
 
 // Creates and returns a viewer function for displaying the envelope of a function value.
 // When zoomed in, the values of the underlying function are passed on.
