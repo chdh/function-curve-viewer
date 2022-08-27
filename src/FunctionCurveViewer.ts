@@ -305,7 +305,7 @@ class PointerController {
 
    private pointerDownEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
-      if (event.altKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
+      if (event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       if (this.isPointerInResizeHandle(event)) {
          return; }
@@ -313,7 +313,7 @@ class PointerController {
       if (wctx.disabled) {
          return; }
       this.trackPointer(event);
-      this.startInteractionOperation(event.shiftKey, event.ctrlKey); };
+      this.startInteractionOperation(event.shiftKey, event.ctrlKey, event.altKey); };
 
    private pointerUpEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
@@ -325,20 +325,20 @@ class PointerController {
       wctx.resetInteractionState();
       wctx.requestRefresh(); };
 
-   private startInteractionOperation (shiftKey: boolean, ctrlKey: boolean) {
+   private startInteractionOperation (shiftKey: boolean, ctrlKey: boolean, altKey: boolean) {
       const wctx = this.wctx;
       wctx.resetInteractionState();
       wctx.requestRefresh();
       switch (this.pointers.size) {
          case 1: {                                         // left click or single touch
             wctx.canvas.focus();
-            if (shiftKey || ctrlKey) {
-               this.startSegmentSelecting(ctrlKey); }
+            if (shiftKey || ctrlKey || altKey) {
+               this.startSegmentSelecting(ctrlKey, altKey); }
              else {
                this.startPlaneDragging(); }
             break; }
          case 2: {                                         // zoom gesture
-            if (!shiftKey && !ctrlKey) {
+            if (!shiftKey && !ctrlKey && !altKey) {
                this.startZooming(); }}}}
 
    private completeInteractionOperation() {
@@ -452,7 +452,8 @@ class PointerController {
       const cPoint = this.getCanvasCoordinatesFromEvent(event);
       if (event.deltaY == 0) {
          return; }
-      const f = (event.deltaY > 0) ? Math.SQRT1_2 : Math.SQRT2;
+      const f0 = (event.deltaMode == 0 && Math.abs(event.deltaY) < 20) ? 1.05 : Math.SQRT2;
+      const f = (event.deltaY > 0) ? 1 / f0 : f0;
       let zoomMode: ZoomMode;
       if (event.shiftKey) {
          zoomMode = ZoomMode.y; }
@@ -475,11 +476,11 @@ class PointerController {
       wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); };
 
-   private startSegmentSelecting (ctrlKey: boolean) {
+   private startSegmentSelecting (ctrlKey: boolean, altKey: boolean) {
       const wctx = this.wctx;
       const iState = wctx.iState;
       const x = this.getPointerLogicalCoordinates().x;
-      if (ctrlKey) {
+      if (ctrlKey || altKey) {
          if (Math.abs(x - iState.segmentStart) < Math.abs(x - iState.segmentEnd)) {
             iState.segmentStart = iState.segmentEnd; }}
        else {
@@ -956,7 +957,9 @@ export class Widget {
          "drag plane with mouse or touch", "move the coordinate space",
          "shift + drag",                   "select x-axis segment",
          "shift + click",                  "clear x-asis segment,<br> set edge for ctrl+click/drag",
-         "ctrl + click<br>ctrl + drag",    "modify x-asis segment",
+         "ctrl + click &nbsp;or&nbsp; alt + click<br>" +
+         "ctrl + drag &nbsp;or&nbsp; alt + drag",
+                                           "modify x-asis segment",
          "mouse wheel",                    "zoom " + primaryZoomAxis,
          "shift + mouse wheel",            "zoom y-axis",
          "ctrl + mouse wheel",             "zoom both axes",
