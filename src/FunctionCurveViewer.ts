@@ -305,7 +305,7 @@ class PointerController {
 
    private pointerDownEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
-      if (event.altKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
+      if (event.ctrlKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       if (this.isPointerInResizeHandle(event)) {
          return; }
@@ -449,7 +449,6 @@ class PointerController {
       if (wctx.vState.focusShield && !wctx.hasFocus()) {
          return; }
       event.preventDefault();
-      const cPoint = this.getCanvasCoordinatesFromEvent(event);
       const isProbablyPad = event.deltaMode == 0 && Math.abs(event.deltaY) < 50 || event.deltaX != 0;
       if (isProbablyPad && !event.ctrlKey) {               // for touchpads, modern browsers set WheelEvent.ctrlKey when zooming
          this.moveByWheel(event);
@@ -476,6 +475,7 @@ class PointerController {
             fx = 1; fy = f; break; }
          default: {
             fx = f; fy = f; }}
+      const cPoint = this.getCanvasCoordinatesFromEvent(event);
       wctx.zoom(fx, fy, cPoint);
       wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); };
