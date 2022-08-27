@@ -305,7 +305,7 @@ class PointerController {
 
    private pointerDownEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
-      if (event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
+      if (event.altKey || event.metaKey || (event.pointerType == "mouse" && event.button != 0)) {
          return; }
       if (this.isPointerInResizeHandle(event)) {
          return; }
@@ -313,7 +313,7 @@ class PointerController {
       if (wctx.disabled) {
          return; }
       this.trackPointer(event);
-      this.startInteractionOperation(event.shiftKey, event.ctrlKey, event.altKey); };
+      this.startInteractionOperation(event.shiftKey, event.altKey); };
 
    private pointerUpEventListener = (event: PointerEvent) => {
       const wctx = this.wctx;
@@ -325,20 +325,20 @@ class PointerController {
       wctx.resetInteractionState();
       wctx.requestRefresh(); };
 
-   private startInteractionOperation (shiftKey: boolean, ctrlKey: boolean, altKey: boolean) {
+   private startInteractionOperation (shiftKey: boolean, altKey: boolean) {
       const wctx = this.wctx;
       wctx.resetInteractionState();
       wctx.requestRefresh();
       switch (this.pointers.size) {
          case 1: {                                         // left click or single touch
             wctx.canvas.focus();
-            if (shiftKey || ctrlKey || altKey) {
-               this.startSegmentSelecting(ctrlKey, altKey); }
+            if (shiftKey || altKey) {
+               this.startSegmentSelecting(altKey); }
              else {
                this.startPlaneDragging(); }
             break; }
          case 2: {                                         // zoom gesture
-            if (!shiftKey && !ctrlKey && !altKey) {
+            if (!shiftKey && !altKey) {
                this.startZooming(); }}}}
 
    private completeInteractionOperation() {
@@ -450,16 +450,20 @@ class PointerController {
          return; }
       event.preventDefault();
       const cPoint = this.getCanvasCoordinatesFromEvent(event);
+      const isProbablyPad = event.deltaMode == 0 && Math.abs(event.deltaY) < 50 || event.deltaX != 0;
+      if (isProbablyPad && !event.ctrlKey) {               // for touchpads, modern browsers set WheelEvent.ctrlKey when zooming
+         this.moveByWheel(event);
+         return; }
       if (event.deltaY == 0) {
          return; }
-      const f0 = (event.deltaMode == 0 && Math.abs(event.deltaY) < 20) ? 1.05 : Math.SQRT2;
+      const f0 = isProbablyPad ? 1.05 : Math.SQRT2;
       const f = (event.deltaY > 0) ? 1 / f0 : f0;
       let zoomMode: ZoomMode;
       if (event.shiftKey) {
          zoomMode = ZoomMode.y; }
        else if (event.altKey) {
          zoomMode = ZoomMode.x; }
-       else if (event.ctrlKey) {
+       else if (event.ctrlKey && !isProbablyPad) {
          zoomMode = ZoomMode.xy; }
        else {
          zoomMode = wctx.vState.primaryZoomMode; }
@@ -476,11 +480,23 @@ class PointerController {
       wctx.requestRefresh();
       wctx.fireViewportChangeEvent(); };
 
-   private startSegmentSelecting (ctrlKey: boolean, altKey: boolean) {
+   // Handles two-finger pan on touch pad.
+   private moveByWheel (event: WheelEvent) {
+      const wctx = this.wctx;
+      const f = (event.deltaMode == 1) ? 15 : (event.deltaMode == 2) ? 100 : 1;
+      const dx = f * event.deltaX;
+      const dy = f * event.deltaY;
+      if (dx == 0 && dy == 0) {
+         return; }
+      wctx.moveCoordinatePlaneRelPx(dx, -dy);
+      wctx.requestRefresh();
+      wctx.fireViewportChangeEvent(); }
+
+   private startSegmentSelecting (altKey: boolean) {
       const wctx = this.wctx;
       const iState = wctx.iState;
       const x = this.getPointerLogicalCoordinates().x;
-      if (ctrlKey || altKey) {
+      if (altKey) {
          if (Math.abs(x - iState.segmentStart) < Math.abs(x - iState.segmentEnd)) {
             iState.segmentStart = iState.segmentEnd; }}
        else {
@@ -753,6 +769,18 @@ class WidgetContext {
       vState.yMin = lPoint.y - (cHeight - cPoint.y) * lHeight / cHeight;
       vState.yMax = vState.yMin + lHeight; }
 
+   // Moves the coordinate plane relative by pixels.
+   public moveCoordinatePlaneRelPx (dx: number, dy: number) {
+      const vState = this.vState;
+      const lWidth  = vState.xMax - vState.xMin;
+      const lHeight = vState.yMax - vState.yMin;
+      const cWidth  = this.canvas.width;
+      const cHeight = this.canvas.height;
+      vState.xMin = vState.xMin + dx / cWidth * lWidth;
+      vState.xMax = vState.xMin + lWidth;
+      vState.yMin = vState.yMin + dy / cHeight * lHeight;
+      vState.yMax = vState.yMin + lHeight; }
+
    public getZoomFactor (xy: boolean) : number {
       const vState = this.vState;
       return xy ? this.canvas.width / (vState.xMax - vState.xMin) : this.canvas.height / (vState.yMax - vState.yMin); }
@@ -956,10 +984,9 @@ export class Widget {
       return [
          "drag plane with mouse or touch", "move the coordinate space",
          "shift + drag",                   "select x-axis segment",
-         "shift + click",                  "clear x-asis segment,<br> set edge for ctrl+click/drag",
-         "ctrl + click &nbsp;or&nbsp; alt + click<br>" +
-         "ctrl + drag &nbsp;or&nbsp; alt + drag",
-                                           "modify x-asis segment",
+         "shift + click",                  "clear x-asis segment,<br> set edge for alt+click/drag",
+         "alt + click<br>" +
+         "alt + drag",                     "modify x-asis segment",
          "mouse wheel",                    "zoom " + primaryZoomAxis,
          "shift + mouse wheel",            "zoom y-axis",
          "ctrl + mouse wheel",             "zoom both axes",
