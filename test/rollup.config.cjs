@@ -1,6 +1,6 @@
-import alias from "@rollup/plugin-alias";
+const alias = require("@rollup/plugin-alias");
 
-export default {
+module.exports = {
    input: "tempBuild/app.js",
    output: {
       file: "app.js",

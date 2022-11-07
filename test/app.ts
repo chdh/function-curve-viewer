@@ -12,7 +12,8 @@ const initialViewerState = <FunctionCurveViewer.ViewerState>{
    xAxisUnit:                "s",
    yAxisUnit:                "m",
    gridEnabled:              true,
-   customPaintFunction:      customPaintFunction };
+   customPaintFunction:      customPaintFunction,
+   copyEventHandler:         copyEventHandler };
 
 function viewerFunction (x: number, _sampleWidth: number, channel: number) {
    switch (channel) {
@@ -35,6 +36,10 @@ function viewerFunction (x: number, _sampleWidth: number, channel: number) {
 
 function customPaintFunction (pctx: FunctionCurveViewer.CustomPaintContext) {
    drawSpiral(-12, 0.7, 5, 0.4, 0.75, 25, pctx); }
+
+function copyEventHandler (event: ClipboardEvent) {
+   event.preventDefault();
+   event.clipboardData?.setData("text", "Clipboard data from FunctionCurveViewer - " + String(new Date())); }
 
 function drawSpiral (centerX: number, centerY: number, widthX: number, widthY: number, growthFactor: number, revolutions: number, pctx: FunctionCurveViewer.CustomPaintContext) {
    const ctx = pctx.ctx;

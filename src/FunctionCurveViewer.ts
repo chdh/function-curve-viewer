@@ -624,6 +624,7 @@ interface Style {
 
 class WidgetContext {
 
+   public  widget:                     Widget;
    public  plotter:                    FunctionPlotter;
    public  pointerController:          PointerController;
    public  kbController:               KeyboardController;
@@ -642,7 +643,9 @@ class WidgetContext {
    public  disabled:                   boolean;                      // internal "disabled" flag
    public  disabledProperty:           boolean;                      // external "disabled" property
 
-   public constructor (canvas: HTMLCanvasElement) {
+   public constructor (canvas: HTMLCanvasElement, widget: Widget) {
+      globalInit();
+      this.widget = widget;
       this.canvas = canvas;
       this.canvasStyle = getComputedStyle(canvas);
       this.eventTarget = new EventTarget();
@@ -688,11 +691,13 @@ class WidgetContext {
          this.plotter           = new FunctionPlotter(this);
          this.pointerController = new PointerController(this);
          this.kbController      = new KeyboardController(this);
-         this.resizeObserver.observe(this.canvas); }
+         this.resizeObserver.observe(this.canvas);
+         canvasMap.set(this.canvas, this.widget); }
        else {
          this.pointerController.dispose();
          this.kbController.dispose();
-         this.resizeObserver.unobserve(this.canvas); }
+         this.resizeObserver.unobserve(this.canvas);
+         canvasMap.delete(this.canvas); }
       this.isConnected = connected;
       this.requestRefresh(); }
 
@@ -872,6 +877,7 @@ class WidgetContext {
 export type ViewerFunction = (x: number, sampleWidth: number, channel: number) => (number | number[] | undefined);
 
 export const enum ZoomMode {x, y, xy}
+export type ClipboardEventHandler = (event: ClipboardEvent) => void;
 
 // Function curve viewer state.
 export interface ViewerState {
@@ -889,7 +895,8 @@ export interface ViewerState {
    customPaintFunction?:     CustomPaintFunction;          // custom paint function
    segmentSelected:          boolean;                      // =true if an x-axis segment is selected
    segmentStart:             number;                       // x value of start of x-axis segment, only relevant if segmentSelected is true
-   segmentEnd:               number; }                     // x value of end of x-axis segment, only relevant if segmentSelected is true
+   segmentEnd:               number;                       // x value of end of x-axis segment, only relevant if segmentSelected is true
+   copyEventHandler?:        ClipboardEventHandler; }      // custom clipboard copy event handler
 
 // Clones and adds missing fields.
 function cloneViewerState (vState: Partial<ViewerState>) : ViewerState {
@@ -908,7 +915,8 @@ function cloneViewerState (vState: Partial<ViewerState>) : ViewerState {
       customPaintFunction:   vState.customPaintFunction,
       segmentSelected:       vState.segmentSelected ?? false,
       segmentStart:          vState.segmentStart ?? 0,
-      segmentEnd:            vState.segmentEnd ?? 0 }; }
+      segmentEnd:            vState.segmentEnd ?? 0,
+      copyEventHandler:      vState.copyEventHandler }; }
 
 //--- Custom paint function ----------------------------------------------------
 
@@ -931,7 +939,7 @@ export class Widget {
    private wctx:             WidgetContext;
 
    public constructor (canvas: HTMLCanvasElement, connected = true) {
-      this.wctx = new WidgetContext(canvas);
+      this.wctx = new WidgetContext(canvas, this);
       if (connected) {
          this.setConnected(true); }}
 
@@ -981,7 +989,7 @@ export class Widget {
    public getRawHelpText() : string[] {
       const pz = this.wctx.vState.primaryZoomMode;
       const primaryZoomAxis = (pz == ZoomMode.x) ? "x-axis" : (pz == ZoomMode.y) ? "y-axis" : "both axes";
-      return [
+      const a = [
          "drag plane with mouse or touch", "move the coordinate space",
          "shift + drag",                   "select x-axis segment",
          "shift + click",                  "clear x-asis segment,<br> set edge for alt+click/drag",
@@ -996,7 +1004,11 @@ export class Widget {
          "X / x",                          "zoom x-axis in/out",
          "Y / y",                          "zoom y-axis in/out",
          "g",                              "toggle coordinate grid",
-         "r",                              "reset to the initial state" ]; }
+         "r",                              "reset to the initial state" ];
+      if (this.wctx.vState.copyEventHandler) {
+         a.push(
+            "Clipboard copy",              "copy curve data to clipboard"); }
+      return a; }
 
    // Returns the help text as a HTML string.
    public getFormattedHelpText() : string {
@@ -1016,4 +1028,34 @@ export class Widget {
          a.push("</td>"); }
       a.push( "</tbody>");
       a.push("</table>");
-      return a.join(""); }}
+      return a.join(""); }
+
+   // Clipboard "copy" event handler.
+   public clipboardCopyEventHandler (event: ClipboardEvent) {
+      this.wctx.vState.copyEventHandler?.(event); }}
+
+//--- Global -------------------------------------------------------------------
+
+var globalInitDone           = false;
+var canvasMap:               Map<HTMLCanvasElement, Widget>;
+
+function getActiveWidget() : Widget | undefined {
+   let e: any = document.activeElement;
+   while (true) {
+      if (!e) {
+         return; }
+      if (e.tagName == "CANVAS") {
+         return canvasMap.get(<HTMLCanvasElement>e); }
+      e = e.shadowRoot?.activeElement; }}
+
+function globalCopyEventListener (event: ClipboardEvent) {
+   getActiveWidget()?.clipboardCopyEventHandler(event); }
+
+function globalInit() {
+   if (globalInitDone) {
+      return; }
+   canvasMap = new Map();
+   // Because clipboard events cannot be received on Canvas elements, we have to use a global event listener.
+   document.addEventListener("copy", globalCopyEventListener);
+   //
+   globalInitDone = true; }

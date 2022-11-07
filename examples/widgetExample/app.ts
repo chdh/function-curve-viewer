@@ -8,14 +8,19 @@ function loadFunctionExpr() {
    const functionExpr = (<HTMLInputElement>document.getElementById("functionExpr"))!.value;
    const viewerFunction = new Function("x", "return " + functionExpr);
    const viewerState = <FunctionCurveViewer.ViewerState>{
-      viewerFunction: viewerFunction,
-      xMin:           -20,
-      xMax:           20,
-      yMin:           -1.2,
-      yMax:           1.2,
-      gridEnabled:    true };
+      viewerFunction:           viewerFunction,
+      xMin:                     -20,
+      xMax:                     20,
+      yMin:                     -1.2,
+      yMax:                     1.2,
+      gridEnabled:              true,
+      copyEventHandler:         copyEventHandler };
    widget.setViewerState(viewerState);
    toggleHelp(false); }
+
+function copyEventHandler (event: ClipboardEvent) {
+   event.preventDefault();
+   event.clipboardData?.setData("text", "Clipboard data from FunctionCurveViewer - " + String(new Date())); }
 
 function loadFunctionExprButtonClick() {
    try {

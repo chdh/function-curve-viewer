@@ -1,6 +1,6 @@
 {
    "name": "function-curve-viewer",
-   "version": "1.0.29",
+   "version": "1.0.30",
    "description": "A function curve viewer widget / web component",
    "type": "module",
    "types": "dist/Index.d.ts",

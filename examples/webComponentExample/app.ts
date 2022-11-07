@@ -1,12 +1,17 @@
 import * as FunctionCurveViewer from "function-curve-viewer";
 
 const initialViewerState = <Partial<FunctionCurveViewer.ViewerState>>{
-   viewerFunction: (x: number, _sampleWidth: number) => Math.sin(x) / x,
-   xMin:           -20,
-   xMax:           20,
-   yMin:           -1.2,
-   yMax:           1.2,
-   gridEnabled:    true };
+   viewerFunction:           (x: number, _sampleWidth: number) => Math.sin(x) / x,
+   xMin:                     -20,
+   xMax:                     20,
+   yMin:                     -1.2,
+   yMax:                     1.2,
+   gridEnabled:              true,
+   copyEventHandler:         copyEventHandler };
+
+function copyEventHandler (event: ClipboardEvent) {
+   event.preventDefault();
+   event.clipboardData?.setData("text", "Clipboard data from FunctionCurveViewer - " + String(new Date())); }
 
 function toggleHelp() {
    const t = document.getElementById("helpText")!;
