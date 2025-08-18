@@ -1,4 +1,4 @@
-import {nextTick} from "./Utils.js";
+import {nextTick} from "./Utils.ts";
 
 //--- Point and PointUtils -----------------------------------------------------
 
@@ -585,7 +585,7 @@ class KeyboardController {
             wctx.requestRefresh();
             wctx.fireViewportChangeEvent();
             return true; }
-         case "r": {
+         case "i": {
             wctx.reset();
             wctx.requestRefresh();
             wctx.fireViewportChangeEvent();
@@ -1004,7 +1004,7 @@ export class Widget {
          "X / x",                          "zoom x-axis in/out",
          "Y / y",                          "zoom y-axis in/out",
          "g",                              "toggle coordinate grid",
-         "r",                              "reset to the initial state" ];
+         "i",                              "reset to the initial state" ];
       if (this.wctx.vState.copyEventHandler) {
          a.push(
             "Clipboard copy",              "copy curve data to clipboard"); }

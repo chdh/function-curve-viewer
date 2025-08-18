@@ -1,6 +1,6 @@
 {
    "name": "function-curve-viewer",
-   "version": "1.0.30",
+   "version": "1.0.31",
    "description": "A function curve viewer widget / web component",
    "type": "module",
    "types": "dist/Index.d.ts",
@@ -12,7 +12,10 @@
    ],
    "license": "MIT",
    "homepage": "http://www.source-code.biz/snippets/typescript/functionCurveViewer",
-   "repository": "github:chdh/function-curve-viewer",
+   "repository": {
+      "type": "git",
+      "url": "git+https://github.com/chdh/function-curve-viewer.git"
+   },
    "contributors": [
       {
          "name": "Christian d'Heureuse",

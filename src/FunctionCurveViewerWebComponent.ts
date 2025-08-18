@@ -1,4 +1,4 @@
-import {Widget, ViewerState} from "./FunctionCurveViewer.js";
+import {Widget, ViewerState} from "./FunctionCurveViewer.ts";
 
 export class FunctionCurveViewerElement extends HTMLElement {
 

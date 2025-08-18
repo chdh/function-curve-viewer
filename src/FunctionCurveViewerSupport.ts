@@ -1,6 +1,6 @@
 // Support routines for the function curve viewer.
 
-import {ViewerFunction} from "./FunctionCurveViewer.js";
+import {ViewerFunction} from "./FunctionCurveViewer.ts";
 
 export interface CreateViewerFunctionForArrayOptions {
    scalingFactor?:           number;                       // usually the sample rate
