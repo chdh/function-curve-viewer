@@ -959,7 +959,7 @@ export class Widget {
    // Supported events:
    //    viewportchange:
    //      Fired after the user has changed the viewport of the widget e.g. by zooming
-   //      oder moving the plane.
+   //      or moving the plane.
    //    segmentchange:
    //      Fired after the user has changed the x-axis segment selection.
    public addEventListener (type: string, listener: EventListener) {
@@ -991,14 +991,14 @@ export class Widget {
       const primaryZoomAxis = (pz == ZoomMode.x) ? "x-axis" : (pz == ZoomMode.y) ? "y-axis" : "both axes";
       const a = [
          "drag plane with mouse or touch", "move the coordinate space",
-         "shift + drag",                   "select x-axis segment",
-         "shift + click",                  "clear x-asis segment,<br> set edge for alt+click/drag",
-         "alt + click<br>" +
-         "alt + drag",                     "modify x-asis segment",
+         "Shift + drag",                   "select x-axis segment",
+         "Shift + click",                  "clear x-asis segment,<br> set edge for alt+click/drag",
+         "Alt + click<br>" +
+         "Alt + drag",                     "modify x-asis segment",
          "mouse wheel",                    "zoom " + primaryZoomAxis,
-         "shift + mouse wheel",            "zoom y-axis",
-         "ctrl + mouse wheel",             "zoom both axes",
-         "alt + mouse wheel",              "zoom x-axis",
+         "Shift + mouse wheel",            "zoom y-axis",
+         "Ctrl + mouse wheel",             "zoom both axes",
+         "Alt + mouse wheel",              "zoom x-axis",
          "touch zoom gesture",             "zoom x, y or both axes",
          "+ / -",                          "zoom both axes in/out",
          "X / x",                          "zoom x-axis in/out",
