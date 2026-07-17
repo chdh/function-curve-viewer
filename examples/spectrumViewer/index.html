@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Spectrum viewer web component - Examples</title>
+ <link rel="stylesheet" type="text/css" href="app.css">
+ <script type="text/javascript" src="app.js"></script>
+</head>
+
+<body>
+
+<h2>Spectrum viewer web component</h2>
+
+<div>
+ Plot type:
+ <select id="plotType">
+  <option value="line">Line</option>
+  <option value="bars">Bars</option>
+ </select>
+ <button id="loadFileButton" style="margin-left: 15px">Load file</button>
+</div>
+
+<spectrum-viewer y-min="-40" y-max="5" spec-res="100"
+ spec-data="[-999,-26.66,-9.85,-6.84,-13.16,2.75,-23.26,-11.11,-11.37,-25.39,-9.07,-25.55,-15.65,-14.12,-23.85,-8.57,-22.57,-14.42,-12.34,-19.13,-3.25,-12.67,-5.00,-2.93,-13.89,-0.68,-8.70,-4.80,-3.95,-15.81,-4.72,-9.93,-8.86,-6.88,-11.46,-1.08,-5.69,-5.25,-4.45,-13.46,-9.43,-16.07,-21.39,-20.49,-24.83,-21.29,-24.40,-21.07,-17.39,-21.69,-19.61,-21.85,-19.54,-16.59,-20.35]"
+ >
+ Error: Your browser does not support Web Components.
+</spectrum-viewer>
+
+<spectrum-viewer y-min="-40" y-max="5" src="testSpectrum.json">
+</spectrum-viewer>
+
+</body>
+</html>

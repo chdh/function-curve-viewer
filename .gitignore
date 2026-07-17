@@ -1,5 +1,7 @@
 $$BackupControl.txt
+AGENTS.md
 build.bat
+CLAUDE.md
 dist
 node_modules
 notes.txt

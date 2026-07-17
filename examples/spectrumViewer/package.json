@@ -1,0 +1,10 @@
+{
+   "private": true,
+   "type": "module",
+   "dependencies": {
+      "function-curve-viewer": "^1.0.22"
+   },
+   "scripts": {
+      "build": "tsc && rollup -c"
+   }
+}

@@ -240,6 +240,14 @@ class FunctionPlotter {
       this.clearCanvas();
       if (wctx.disabled) {
          return; }
+      const customPaintContextBase = {
+         vState,
+         ctx: this.ctx,
+         mapLogicalToCanvasXCoordinate: (x: number) => wctx.mapLogicalToCanvasXCoordinate(x),
+         mapLogicalToCanvasYCoordinate: (y: number) => wctx.mapLogicalToCanvasYCoordinate(y),
+         curveColors: wctx.style.curveColors};
+      if (vState.customPaintFunction) {
+         vState.customPaintFunction({pass: 1, ...customPaintContextBase}); }
       this.drawSelectedSegmentBackground();
       if (wctx.vState.gridEnabled) {
          this.drawGrid(); }
@@ -247,12 +255,7 @@ class FunctionPlotter {
          for (let channel = wctx.vState.channels - 1; channel >= 0; channel--) {
             this.drawFunctionCurve(channel); }}
       if (vState.customPaintFunction) {
-         vState.customPaintFunction({
-            vState,
-            ctx: this.ctx,
-            mapLogicalToCanvasXCoordinate: (x: number) => wctx.mapLogicalToCanvasXCoordinate(x),
-            mapLogicalToCanvasYCoordinate: (y: number) => wctx.mapLogicalToCanvasYCoordinate(y),
-            curveColors: wctx.style.curveColors}); }}
+         vState.customPaintFunction({pass: 2, ...customPaintContextBase}); }}
 
    public resize (width: number, height: number) {
       const wctx = this.wctx;
@@ -292,7 +295,7 @@ class PointerController {
       wctx.canvas.addEventListener("pointerup",     this.pointerUpEventListener);
       wctx.canvas.addEventListener("pointercancel", this.pointerUpEventListener);
       wctx.canvas.addEventListener("pointermove",   this.pointerMoveEventListener);
-      wctx.canvas.addEventListener("wheel",         this.wheelEventListener); }
+      wctx.canvas.addEventListener("wheel",         this.wheelEventListener, {passive: false}); }
 
    public dispose() {
       const wctx = this.wctx;
@@ -384,7 +387,7 @@ class PointerController {
    private releaseAllPointers() {
       while (this.pointers.size > 0) {
          const pointerId = this.pointers.keys().next().value;
-         this.releasePointer(pointerId); }}
+         this.releasePointer(pointerId!); }}
 
    private startPlaneDragging() {
       const wctx = this.wctx;
@@ -405,8 +408,8 @@ class PointerController {
    private startZooming() {
       const wctx = this.wctx;
       const pointerValues = this.pointers.values();
-      const event1 = pointerValues.next().value;
-      const event2 = pointerValues.next().value;
+      const event1 = pointerValues.next().value!;
+      const event2 = pointerValues.next().value!;
       const cPoint1 = this.getCanvasCoordinatesFromEvent(event1);
       const cPoint2 = this.getCanvasCoordinatesFromEvent(event2);
       const cCenter = PointUtils.computeCenter(cPoint1, cPoint2);
@@ -427,8 +430,8 @@ class PointerController {
       if (this.pointers.size != 2) {
          return; }
       const pointerValues = this.pointers.values();
-      const event1 = pointerValues.next().value;
-      const event2 = pointerValues.next().value;
+      const event1 = pointerValues.next().value!;
+      const event2 = pointerValues.next().value!;
       const cPoint1 = this.getCanvasCoordinatesFromEvent(event1);
       const cPoint2 = this.getCanvasCoordinatesFromEvent(event2);
       const newCCenter = PointUtils.computeCenter(cPoint1, cPoint2);
@@ -526,7 +529,7 @@ class PointerController {
    private getPointerCanvasCoordinates() : Point {
       if (this.pointers.size < 1) {
          throw new Error("No active pointers."); }
-      const event = this.pointers.values().next().value;
+      const event = this.pointers.values().next().value!;
       return this.getCanvasCoordinatesFromEvent(event); }
 
    // Returns the logical coordinates of the first pointer.
@@ -705,6 +708,8 @@ class WidgetContext {
       this.vState = cloneViewerState(vState);
       this.initialVState = cloneViewerState(vState);
       this.updateDisabledFlag();
+      if (this.isConnected) {
+         this.getStyle(); }                                                    // re-load the styles when the viewer state is updated
       this.requestRefresh(); }
 
    public updateDisabledFlag() {
@@ -848,7 +853,8 @@ class WidgetContext {
          this.eventTarget.dispatchEvent(event); }); }
 
    public hasFocus() : boolean {
-      return document.activeElement === this.canvas; }
+      const root = <Document|ShadowRoot>this.canvas.getRootNode();
+      return root.activeElement === this.canvas; }
 
    private resizeObserverCallback = (entries: ResizeObserverEntry[]) => {
       const box = entries[0].contentBoxSize[0];
@@ -926,6 +932,7 @@ function cloneViewerState (vState: Partial<ViewerState>) : ViewerState {
 export type CustomPaintFunction = (pctx: CustomPaintContext) => void;
 
 export interface CustomPaintContext {
+   pass:                     number;                       // 1 = paint on background, 2 = paint on foreground
    vState:                   ViewerState;                  // viewer state
    ctx:                      CanvasRenderingContext2D;     // canvas drawing context
    mapLogicalToCanvasXCoordinate: (lx: number) => number;  // function to map x coordinate from logical to canvas

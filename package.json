@@ -1,14 +1,21 @@
 {
    "name": "function-curve-viewer",
-   "version": "1.0.31",
-   "description": "A function curve viewer widget / web component",
+   "version": "1.0.32",
+   "description": "Interactive function curve and waveform viewer for the browser - a canvas widget / web component with zoom and pan",
    "type": "module",
    "types": "dist/Index.d.ts",
    "main": "dist/Index.js",
    "keywords": [
-      "function",
+      "function-plot",
+      "function-plotter",
+      "plot",
+      "graph",
       "curve",
-      "viewer"
+      "math",
+      "waveform",
+      "waveform-viewer",
+      "web-component",
+      "canvas"
    ],
    "license": "MIT",
    "homepage": "http://www.source-code.biz/snippets/typescript/functionCurveViewer",

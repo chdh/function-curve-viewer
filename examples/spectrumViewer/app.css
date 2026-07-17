@@ -1,0 +1,17 @@
+body {
+   font-family: Arial, sans-serif;
+   font-size: 14px; }
+
+spectrum-viewer {
+   margin-top: 15px;
+   width: min(1320px, 100%);
+   height: 250px;
+   border: 1px solid black;
+   touch-action: none;
+   resize: both;
+   overflow: hidden;
+   --curve-color: #69f; }
+
+spectrum-viewer:focus {
+   outline: 1px auto #4D90FE;
+   outline-style: solid; }
