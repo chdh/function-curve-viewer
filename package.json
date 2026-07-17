@@ -5,6 +5,14 @@
    "type": "module",
    "types": "dist/Index.d.ts",
    "main": "dist/Index.js",
+   "exports": {
+      ".": {
+         "types": "./dist/Index.d.ts",
+         "default": "./dist/Index.js"
+      },
+      "./dist/*": "./dist/*"
+   },
+   "sideEffects": false,
    "keywords": [
       "function-plot",
       "function-plotter",
@@ -18,18 +26,16 @@
       "canvas"
    ],
    "license": "MIT",
-   "homepage": "http://www.source-code.biz/snippets/typescript/functionCurveViewer",
+   "homepage": "https://www.source-code.biz/snippets/typescript/functionCurveViewer",
    "repository": {
       "type": "git",
       "url": "git+https://github.com/chdh/function-curve-viewer.git"
    },
-   "contributors": [
-      {
-         "name": "Christian d'Heureuse",
-         "email": "chdh@inventec.ch",
-         "url": "http://www.source-code.biz"
-      }
-   ],
+   "author": {
+      "name": "Christian d'Heureuse",
+      "email": "chdh@inventec.ch",
+      "url": "https://www.source-code.biz"
+   },
    "scripts": {
       "build": "tsc"
    },

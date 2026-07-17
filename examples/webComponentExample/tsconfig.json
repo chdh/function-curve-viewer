@@ -2,9 +2,10 @@
    "compilerOptions": {
       "allowUnreachableCode": false,
       "alwaysStrict": true,
-      "lib": ["ES2020", "DOM"],
-      "module": "ES2020",
-      "moduleResolution": "node",
+      "forceConsistentCasingInFileNames": true,
+      "lib": ["ES2022", "DOM"],
+      "module": "esnext",
+      "moduleResolution": "bundler",
       "noFallthroughCasesInSwitch": true,
       "noImplicitAny": true,
       "noImplicitOverride": true,
@@ -15,9 +16,11 @@
       "outDir": "tempBuild",
       "removeComments": true,
       "rewriteRelativeImportExtensions": true,
+      "rootDir": "src",
       "strictFunctionTypes": true,
       "strictNullChecks": true,
-      "target": "ES2020"
+      "strictPropertyInitialization": false,
+      "target": "ES2022"
    },
-   "files": ["app.ts"]
+   "include": ["src"]
 }

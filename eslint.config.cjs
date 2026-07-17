@@ -99,6 +99,7 @@ const rules = {
    "@typescript-eslint/restrict-plus-operands": "off",
    "@typescript-eslint/restrict-template-expressions": "off",
    "no-var": "off",                                     // @typescript-eslint/recommended switches this on
+   "no-new-func": "off",                                // for examples/widgetExample
 
    // Check-file plugin rules:
    "check-file/filename-naming-convention": ["error", {"**/*.ts": "[A-Z]*"}],
@@ -110,10 +111,9 @@ module.exports = tseslint.config({
       "check-file": checkFile,
       "@stylistic": stylistic },
    languageOptions: {
-   parserOptions: {
-      project: "./tsconfig.json",
-         warnOnUnsupportedTypeScriptVersion: false,
-         },
+      parserOptions: {
+         projectService: true,
+         warnOnUnsupportedTypeScriptVersion: false },
       globals: {
         ...globals.browser }},
    extends: [

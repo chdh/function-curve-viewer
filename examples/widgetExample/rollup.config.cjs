@@ -1,7 +1,7 @@
 const resolve = require("@rollup/plugin-node-resolve");
 
 module.exports = {
-   input: "tempBuild/app.js",
+   input: "tempBuild/Main.js",
    output: {
       file: "app.js",
       format: "iife"

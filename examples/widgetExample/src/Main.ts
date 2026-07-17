@@ -1,8 +1,8 @@
 import * as FunctionCurveViewer from "function-curve-viewer";
 
-let   canvas:       HTMLCanvasElement;
-let   widget:       FunctionCurveViewer.Widget;
-let   audioContext: AudioContext;
+var canvas:        HTMLCanvasElement;
+var widget:        FunctionCurveViewer.Widget;
+var audioContext:  AudioContext;
 
 function loadFunctionExpr() {
    const functionExpr = (<HTMLInputElement>document.getElementById("functionExpr"))!.value;
@@ -31,7 +31,7 @@ function loadFunctionExprButtonClick() {
 
 async function initFunctionViewerFromAudioFileData (fileData: ArrayBuffer) {
    if (!audioContext) {
-      audioContext = new ((<any>window).AudioContext || (<any>window).webkitAudioContext)(); }
+      audioContext = new ((<any>window).AudioContext ?? (<any>window).webkitAudioContext)(); }
    const audioBuffer = await audioContext.decodeAudioData(fileData);
    const samples = new Float64Array(audioBuffer.getChannelData(0)); // only the first channel is used
    const viewerFunction = FunctionCurveViewer.createViewerFunctionForArray(samples, {scalingFactor: audioBuffer.sampleRate});
@@ -56,7 +56,7 @@ function loadFileData (file: File) : Promise<ArrayBuffer> {
 
 async function loadLocalAudioFile() {
    const files = (<HTMLInputElement>document.getElementById("audioFile"))!.files;
-   if (!files || files.length != 1) {
+   if (files?.length !== 1) {
       throw new Error("No file selected."); }
    const file = files[0];
    const fileData = await loadFileData(file);
@@ -89,7 +89,7 @@ async function loadAudioFileFromUrlButtonClick() {
 
 function toggleHelp (show?: boolean) {
    const t = document.getElementById("helpText")!;
-   if (show != undefined ? show : t.classList.contains("hidden")) {
+   if (show ?? t.classList.contains("hidden")) {
       t.classList.remove("hidden");
       t.innerHTML = widget.getFormattedHelpText(); }
     else {
@@ -106,7 +106,7 @@ function startup2() {
    document.getElementById("loadAudioFileFromUrlButton")!.addEventListener("click", loadAudioFileFromUrlButtonClick);
    loadFunctionExprButtonClick(); }
 
-function showError (e: Error) {
+function showError (e: any) {
    console.log(e);
    const divElement = document.createElement("div");
    divElement.textContent = "Error: " + e;

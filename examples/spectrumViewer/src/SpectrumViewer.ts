@@ -139,8 +139,8 @@ export class SpectrumViewerElement extends FunctionCurveViewer.FunctionCurveView
          return; }
       try {
          return Utils.parseNumber(s); }
-       catch (_e) {
-         throw new Error(`Invalid numeric value for attribute "${attrName}".`); }}
+       catch (err: any) {
+         throw new Error(`Invalid numeric value for attribute "${attrName}".`, {cause: err}); }}
 
    private getElementAttributes() {
       this._specRes = this.getAttr_num("spec-res") ?? this._specRes;
@@ -178,10 +178,10 @@ export class SpectrumViewerElement extends FunctionCurveViewer.FunctionCurveView
          console.log("Fetch for spectrum JSON file failed.", response);
          return; }
       const json = await response.text();
-      this.loadSpectrumJson(json); }
+      this.loadSpectrumJson(json); };
 
    private fetchSpectrumJson_error = (error: Error) => {
-      console.log("Fetch for spectrum JSON file failed.", error); }
+      console.log("Fetch for spectrum JSON file failed.", error); };
 
    public override connectedCallback() {
       super.connectedCallback();
